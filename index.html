@@ -20,26 +20,23 @@
       user-select: none;
     }
     h1 {
-      font-size: 1.35rem;
-      margin-bottom: 6px;
+      font-size: 1.3rem;
+      margin-bottom: 4px;
       color: #7dd3fc;
       text-shadow: 0 0 12px rgba(125, 211, 252, 0.5);
       letter-spacing: 1px;
     }
     #ui {
       display: flex;
-      gap: 16px;
-      margin-bottom: 6px;
-      font-size: 0.92rem;
+      gap: 14px;
+      margin-bottom: 4px;
+      font-size: 0.88rem;
       font-weight: 600;
       flex-wrap: wrap;
       justify-content: center;
     }
     #ui span { color: #fde68a; }
-    #multiplier {
-      color: #4ade80 !important;
-      font-weight: 700;
-    }
+    #multiplier { color: #4ade80 !important; font-weight: 700; }
     #game-container {
       position: relative;
       border: 3px solid #334155;
@@ -79,19 +76,44 @@
     }
     .btn:active { transform: scale(0.97); }
     .controls {
-      margin-top: 10px;
+      margin-top: 8px;
       text-align: center;
       color: #94a3b8;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       max-width: 360px;
-      line-height: 1.4;
+      line-height: 1.35;
     }
     .kick-info {
-      font-size: 0.9rem;
+      font-size: 0.86rem;
       color: #a5f3fc;
-      margin-bottom: 4px;
-      min-height: 20px;
+      margin-bottom: 3px;
+      min-height: 18px;
     }
+    #shot-select {
+      display: flex;
+      gap: 10px;
+      margin-top: 8px;
+      justify-content: center;
+    }
+    .shot-btn {
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: 2px solid #475569;
+      border-radius: 20px;
+      background: #1e293b;
+      color: #94a3b8;
+      cursor: pointer;
+      transition: all 0.15s;
+      min-width: 90px;
+    }
+    .shot-btn.active {
+      border-color: #38bdf8;
+      background: #0c4a6e;
+      color: #7dd3fc;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.35);
+    }
+    .shot-btn:active { transform: scale(0.96); }
   </style>
 </head>
 <body>
@@ -115,9 +137,15 @@
     </div>
   </div>
 
+  <div id="shot-select">
+    <button class="shot-btn active" data-type="blast">💥 Blast</button>
+    <button class="shot-btn" data-type="chip">🎈 Chip</button>
+    <button class="shot-btn" data-type="curve">🌀 Curve</button>
+  </div>
+
   <div class="controls">
-    Drag left/right to aim • Hold & release to set power<br>
-    Top corners = Perfect Bonus! • Build your multiplier!
+    Choose shot type → Aim → Hold & release to shoot<br>
+    Top corners = Perfect Bonus!
   </div>
 
   <script>
@@ -134,6 +162,7 @@
     const goalsTextEl = document.getElementById('goalsText');
     const resultTitleEl = document.getElementById('resultTitle');
     const restartBtn = document.getElementById('restartBtn');
+    const shotBtns = document.querySelectorAll('.shot-btn');
 
     let highScore = parseInt(localStorage.getItem('cosmicFreeKickHigh') || '0');
     highScoreEl.textContent = highScore;
@@ -150,7 +179,7 @@
     let resultTimer = 0;
     let message = '';
     let messageTimer = 0;
-    let lastGoalPerfect = false;
+    let shotType = 'blast'; // blast | chip | curve
 
     const baseLevels = [
       { name: 'Close range',  points: 50,  ballY: 380, defenders: 1 },
@@ -160,12 +189,22 @@
       { name: 'Extreme',      points: 200, ballY: 520, defenders: 3 }
     ];
 
-    const ball = { x: 190, y: 380, vx: 0, vy: 0, radius: 9, active: false };
+    const ball = { x: 190, y: 380, vx: 0, vy: 0, radius: 9, active: false, spin: 0 };
     const keeper = { x: 190, y: 95, width: 36, height: 48, diveDir: 0, diveProgress: 0, diving: false };
     const goal = { x: 70, y: 40, width: 240, height: 70 };
     let defenders = [];
     let pointerDown = false;
     let lastX = 0;
+
+    // Shot type buttons
+    shotBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (phase === 'flying' || phase === 'result' || gameOver) return;
+        shotBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        shotType = btn.dataset.type;
+      });
+    });
 
     function getMultiplier() {
       if (streak >= 10) return 3;
@@ -187,7 +226,6 @@
     function getCurrentLevel() {
       const idx = Math.min(streak, baseLevels.length - 1);
       const level = { ...baseLevels[idx] };
-
       if (streak >= baseLevels.length) {
         const extra = streak - baseLevels.length + 1;
         level.defenders = Math.min(5, 3 + Math.floor(extra / 2));
@@ -204,7 +242,6 @@
       const spacing = count > 3 ? 32 : 38;
       const totalWidth = (count - 1) * spacing;
       const startXPos = 190 - totalWidth / 2;
-
       for (let i = 0; i < count; i++) {
         defenders.push({
           x: startXPos + i * spacing,
@@ -212,8 +249,7 @@
           baseX: startXPos + i * spacing,
           width: 22,
           height: 38,
-          phase: Math.random() * Math.PI * 2,
-          speed: 0.9 + Math.random() * 0.5 + (streak * 0.04)
+          phase: Math.random() * Math.PI * 2
         });
       }
     }
@@ -225,6 +261,7 @@
       ball.vx = 0;
       ball.vy = 0;
       ball.active = false;
+      ball.spin = 0;
       aimAngle = 0;
       power = 0;
       charging = false;
@@ -234,7 +271,6 @@
       keeper.diveProgress = 0;
       keeper.diving = false;
       createDefenders(level.defenders);
-      lastGoalPerfect = false;
 
       streakEl.textContent = streak;
       updateMultiplierUI();
@@ -251,6 +287,10 @@
       streakEl.textContent = 0;
       updateMultiplierUI();
       overlay.classList.remove('show');
+      // Reset shot type to blast
+      shotType = 'blast';
+      shotBtns.forEach(b => b.classList.remove('active'));
+      document.querySelector('[data-type="blast"]').classList.add('active');
       resetForKick();
     }
 
@@ -268,22 +308,45 @@
       phase = 'flying';
       ball.active = true;
 
-      const powerFactor = 0.55 + power * 0.9;
-      const baseSpeed = 11 + power * 7;
+      const powerFactor = 0.5 + power * 0.95;
 
-      ball.vx = aimAngle * 6.5 * powerFactor;
-      ball.vy = -baseSpeed * powerFactor;
+      if (shotType === 'blast') {
+        // Fast, powerful, flatter trajectory
+        const baseSpeed = 13.5 + power * 8;
+        ball.vx = aimAngle * 5.8 * powerFactor;
+        ball.vy = -baseSpeed * powerFactor;
+        ball.spin = 0;
+      } 
+      else if (shotType === 'chip') {
+        // High lob – more upward, slower forward
+        const baseSpeed = 9.5 + power * 5.5;
+        ball.vx = aimAngle * 4.2 * powerFactor;
+        ball.vy = -baseSpeed * powerFactor * 1.25; // extra height
+        ball.spin = 0;
+      } 
+      else if (shotType === 'curve') {
+        // Bending shot
+        const baseSpeed = 11.5 + power * 6.5;
+        ball.vx = aimAngle * 4.5 * powerFactor;
+        ball.vy = -baseSpeed * powerFactor;
+        // Spin direction follows aim (stronger curve)
+        ball.spin = aimAngle * 0.18 * (0.7 + power);
+      }
 
-      // Keeper AI improves with streak
+      // Keeper AI
       const aimBias = aimAngle;
       let dive = 0;
-      const reactChance = 0.55 + Math.min(0.28, streak * 0.025);
+      const reactChance = 0.52 + Math.min(0.28, streak * 0.025);
+
+      // Blast is slightly harder for keeper to judge
+      const blastPenalty = shotType === 'blast' ? 0.12 : 0;
+
       if (Math.abs(aimBias) < 0.22) {
-        dive = Math.random() < reactChance ? (Math.random() < 0.5 ? -1 : 1) : 0;
+        dive = Math.random() < (reactChance - blastPenalty) ? (Math.random() < 0.5 ? -1 : 1) : 0;
       } else {
         dive = aimBias > 0 ? 1 : -1;
-        if (Math.random() < 0.25 - Math.min(0.12, streak * 0.01)) dive = -dive;
-        if (Math.random() < 0.14) dive = 0;
+        if (Math.random() < 0.26 - Math.min(0.12, streak * 0.01)) dive = -dive;
+        if (Math.random() < 0.15 + blastPenalty) dive = 0;
       }
       keeper.diveDir = dive;
       keeper.diving = true;
@@ -303,6 +366,9 @@
     function checkDefenderCollision() {
       if (!ball.active) return false;
       for (let d of defenders) {
+        // Chip can go over the wall more easily
+        if (shotType === 'chip' && ball.y < d.y - 8) continue;
+
         const closestX = Math.max(d.x - d.width/2, Math.min(ball.x, d.x + d.width/2));
         const closestY = Math.max(d.y - 5, Math.min(ball.y, d.y + d.height));
         const dx = ball.x - closestX;
@@ -322,8 +388,17 @@
       }
 
       if (phase === 'flying' && ball.active) {
-        ball.vy += 0.28;
-        ball.vx *= 0.995;
+        // Gravity (chip feels floatier)
+        const grav = shotType === 'chip' ? 0.22 : 0.28;
+        ball.vy += grav;
+
+        // Curve spin effect
+        if (shotType === 'curve' && ball.spin !== 0) {
+          ball.vx += ball.spin;
+          ball.spin *= 0.985; // spin decays
+        }
+
+        ball.vx *= 0.996;
         ball.x += ball.vx;
         ball.y += ball.vy;
 
@@ -345,7 +420,6 @@
           const inGoalX = ball.x > goal.x + 8 && ball.x < goal.x + goal.width - 8;
           const belowCrossbar = ball.y > goal.y + 5;
 
-          // Perfect zones: top left & top right corners
           const isTopCorner = ball.y < goal.y + 28;
           const isFarPost = (ball.x < goal.x + 45) || (ball.x > goal.x + goal.width - 45);
           const isPerfect = isTopCorner && isFarPost;
@@ -361,22 +435,21 @@
             messageTimer = 90;
             resultTimer = 90;
           } else if (inGoalX && belowCrossbar && ball.y < 95) {
-            // GOAL!
+            // GOAL
             ball.active = false;
             phase = 'result';
 
             const level = getCurrentLevel();
             let pts = level.points;
-            let bonusText = '';
 
-            // Perfect placement bonus
             if (isPerfect) {
               pts = Math.round(pts * 1.8);
-              lastGoalPerfect = true;
-              bonusText = ' PERFECT!';
             }
 
-            // Apply multiplier
+            // Small bonus for using different shot types effectively
+            if (shotType === 'chip' && isTopCorner) pts = Math.round(pts * 1.15);
+            if (shotType === 'curve' && isFarPost) pts = Math.round(pts * 1.1);
+
             const mult = getMultiplier();
             const finalPts = Math.round(pts * mult);
 
@@ -393,7 +466,7 @@
               highScoreEl.textContent = highScore;
             }
 
-            if (lastGoalPerfect) {
+            if (isPerfect) {
               message = `PERFECT! +${finalPts}`;
             } else if (mult >= 2) {
               message = `GOAL! ×${mult} +${finalPts}`;
@@ -401,7 +474,6 @@
               message = `GOAL! +${finalPts}`;
             }
 
-            // Milestone messages
             if (streak === 5) message = `5 STREAK! +${finalPts}`;
             if (streak === 10) message = `10 STREAK!! +${finalPts}`;
             if (streak === 15) message = `UNSTOPPABLE! +${finalPts}`;
@@ -477,8 +549,8 @@
       ctx.fillRect(goal.x + goal.width - 2, goal.y, 6, goal.height + 8);
       ctx.fillRect(goal.x - 4, goal.y, goal.width + 8, 6);
 
-      // Highlight top corners lightly
-      ctx.fillStyle = 'rgba(125, 211, 252, 0.12)';
+      // Top corner highlight
+      ctx.fillStyle = 'rgba(125, 211, 252, 0.13)';
       ctx.fillRect(goal.x + 6, goal.y + 6, 38, 24);
       ctx.fillRect(goal.x + goal.width - 44, goal.y + 6, 38, 24);
 
@@ -587,10 +659,15 @@
     function drawAimAndPower() {
       if (phase === 'flying' || phase === 'result') return;
 
+      // Different arrow color per shot type
+      let arrowColor = '#38bdf8';
+      if (shotType === 'chip') arrowColor = '#a78bfa';
+      if (shotType === 'curve') arrowColor = '#34d399';
+
       const ax = ball.x + aimAngle * 70;
       const ay = ball.y - 50;
 
-      ctx.strokeStyle = '#38bdf8';
+      ctx.strokeStyle = arrowColor;
       ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -598,7 +675,18 @@
       ctx.lineTo(ax, ay);
       ctx.stroke();
 
-      ctx.fillStyle = '#38bdf8';
+      // Curve indicator
+      if (shotType === 'curve' && Math.abs(aimAngle) > 0.15) {
+        ctx.beginPath();
+        ctx.setLineDash([4, 4]);
+        const curveDir = aimAngle > 0 ? 1 : -1;
+        ctx.moveTo(ax, ay);
+        ctx.quadraticCurveTo(ax + curveDir * 25, ay - 20, ax + curveDir * 40, ay - 5);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      ctx.fillStyle = arrowColor;
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.lineTo(ax - 7 - aimAngle * 4, ay + 12);
@@ -626,6 +714,12 @@
       ctx.font = '11px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('PWR', barX, barY + barH + 16);
+
+      // Shot type label near ball
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillStyle = arrowColor;
+      const label = shotType === 'blast' ? 'BLAST' : shotType === 'chip' ? 'CHIP' : 'CURVE';
+      ctx.fillText(label, ball.x, ball.y + 28);
     }
 
     function drawMessage() {
@@ -635,15 +729,10 @@
       ctx.font = 'bold 26px sans-serif';
       ctx.textAlign = 'center';
 
-      if (message.includes('PERFECT') || message.includes('UNSTOPPABLE')) {
-        ctx.fillStyle = '#f472b6';
-      } else if (message.includes('GOAL') || message.includes('STREAK')) {
-        ctx.fillStyle = '#4ade80';
-      } else if (message.includes('BLOCKED')) {
-        ctx.fillStyle = '#f97316';
-      } else {
-        ctx.fillStyle = '#f87171';
-      }
+      if (message.includes('PERFECT') || message.includes('UNSTOPPABLE')) ctx.fillStyle = '#f472b6';
+      else if (message.includes('GOAL') || message.includes('STREAK')) ctx.fillStyle = '#4ade80';
+      else if (message.includes('BLOCKED')) ctx.fillStyle = '#f97316';
+      else ctx.fillStyle = '#f87171';
 
       ctx.shadowColor = 'rgba(0,0,0,0.7)';
       ctx.shadowBlur = 10;
@@ -723,7 +812,17 @@
         charging = true;
         power = 0.15;
       }
+      // Quick select shot type with 1/2/3
+      if (e.code === 'Digit1') { shotType = 'blast'; updateShotButtons(); }
+      if (e.code === 'Digit2') { shotType = 'chip'; updateShotButtons(); }
+      if (e.code === 'Digit3') { shotType = 'curve'; updateShotButtons(); }
     });
+
+    function updateShotButtons() {
+      shotBtns.forEach(b => {
+        b.classList.toggle('active', b.dataset.type === shotType);
+      });
+    }
 
     document.addEventListener('keyup', e => {
       if ((e.code === 'Space' || e.code === 'ArrowUp') && phase === 'power' && charging) {
