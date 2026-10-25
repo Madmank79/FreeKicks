@@ -8,7 +8,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # ──────────────────────────────────────────────
-# BOT TOKEN  (replace with your own if needed)
+# BOT TOKEN
 # ──────────────────────────────────────────────
 TOKEN = "8843510657:AAGzWuoFgxxMcDsr-DKhHLqA1ZX8nZpa37Y"
 
@@ -28,8 +28,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(
         "🌌 Welcome to *Cosmic Free Kicks*!\n\n"
-        "Take 3 free kicks from different distances.\n"
-        "Longer range = higher points!\n\n"
+        "Score free kicks until you miss!\n"
+        "Every goal increases the difficulty.\n\n"
+        "How long can you keep the streak going?\n\n"
         "Tap the button below to play 👇",
         reply_markup=reply_markup,
         parse_mode="Markdown"
@@ -43,9 +44,9 @@ async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "Ready for some free kicks?\n"
-        "Close → Medium → Long range.\n"
-        "Score as many as you can!",
+        "Ready for endless free kicks?\n"
+        "Keep scoring to build your streak!\n"
+        "One miss and it's game over.",
         reply_markup=reply_markup
     )
 
@@ -53,15 +54,17 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """ /help - How to play """
     await update.message.reply_text(
         "⚽ *Cosmic Free Kicks – How to Play*\n\n"
-        "🎯 *You get 3 free kicks:*\n"
-        "• Close range → 50 points\n"
-        "• Medium range → 100 points\n"
-        "• Long range → 150 points\n\n"
+        "🎯 *Endless mode:*\n"
+        "Keep scoring free kicks until you miss!\n"
+        "Every goal adds points and increases difficulty.\n\n"
+        "• More defenders appear\n"
+        "• Longer distances\n"
+        "• Faster moving wall\n\n"
         "🎮 *Controls:*\n"
         "• Drag left/right (or ← → / A D) to aim\n"
         "• Hold to charge power, release to shoot\n"
         "• Space / hold on mobile also works\n\n"
-        "Beat the goalkeeper and rack up points!\n"
+        "How long can you keep the streak going?\n"
         "High score is saved on your device.\n\n"
         "Use /play to start!",
         parse_mode="Markdown"
