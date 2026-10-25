@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cosmic Flipper – Launches the real arcade pinball game
+Cosmic Free Kicks – Telegram bot launcher
 """
 
 import logging
@@ -8,7 +8,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, ContextTypes
 
 # ──────────────────────────────────────────────
-# BOT TOKEN
+# BOT TOKEN  (replace with your own if needed)
 # ──────────────────────────────────────────────
 TOKEN = "8843510657:AAGzWuoFgxxMcDsr-DKhHLqA1ZX8nZpa37Y"
 
@@ -20,43 +20,51 @@ logging.basicConfig(
 )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Use case 1: /start - Welcome message with play button"""
+    """ /start - Welcome message with play button """
     keyboard = [
-        [InlineKeyboardButton("🎮 Play Now", url=GAME_URL)]
+        [InlineKeyboardButton("⚽ Take Free Kicks", url=GAME_URL)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "🌌 Welcome to Cosmic Flipper!\n\n"
-        "This is an arcade pinball game. Tap the button below to play!",
-        reply_markup=reply_markup
+        "🌌 Welcome to *Cosmic Free Kicks*!\n\n"
+        "Take 3 free kicks from different distances.\n"
+        "Longer range = higher points!\n\n"
+        "Tap the button below to play 👇",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
     )
 
 async def play(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Use case 2: /play - Launch the game directly"""
+    """ /play - Launch the game """
     keyboard = [
-        [InlineKeyboardButton("🚀 Launch Game", url=GAME_URL)]
+        [InlineKeyboardButton("🚀 Start Kicking", url=GAME_URL)]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        "Ready to play? Tap the button to launch Cosmic Flipper!",
+        "Ready for some free kicks?\n"
+        "Close → Medium → Long range.\n"
+        "Score as many as you can!",
         reply_markup=reply_markup
     )
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Use case 3: /help - Game instructions"""
+    """ /help - How to play """
     await update.message.reply_text(
-        "🌌 Cosmic Flipper – How to Play\n\n"
-        "🎮 Controls:\n"
-        "• Left/Right arrows or A/D to flip\n"
-        "• Space bar to launch the ball\n"
-        "• On mobile: tap left/right to flip, tap center to launch\n\n"
-        "⭐ Objective:\n"
-        "• Hit bumpers to score points\n"
-        "• Keep the ball in play with flippers\n"
-        "• Don't lose all 3 lives!\n\n"
-        "Use /play to start the game!"
+        "⚽ *Cosmic Free Kicks – How to Play*\n\n"
+        "🎯 *You get 3 free kicks:*\n"
+        "• Close range → 50 points\n"
+        "• Medium range → 100 points\n"
+        "• Long range → 150 points\n\n"
+        "🎮 *Controls:*\n"
+        "• Drag left/right (or ← → / A D) to aim\n"
+        "• Hold to charge power, release to shoot\n"
+        "• Space / hold on mobile also works\n\n"
+        "Beat the goalkeeper and rack up points!\n"
+        "High score is saved on your device.\n\n"
+        "Use /play to start!",
+        parse_mode="Markdown"
     )
 
 def main():
@@ -66,7 +74,7 @@ def main():
     app.add_handler(CommandHandler("play", play))
     app.add_handler(CommandHandler("help", help_cmd))
 
-    print("🚀 Cosmic Flipper (Arcade) is online...")
+    print("⚽ Cosmic Free Kicks bot is online...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
