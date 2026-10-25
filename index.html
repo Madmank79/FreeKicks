@@ -28,12 +28,18 @@
     }
     #ui {
       display: flex;
-      gap: 18px;
-      margin-bottom: 8px;
-      font-size: 0.95rem;
+      gap: 16px;
+      margin-bottom: 6px;
+      font-size: 0.92rem;
       font-weight: 600;
+      flex-wrap: wrap;
+      justify-content: center;
     }
     #ui span { color: #fde68a; }
+    #multiplier {
+      color: #4ade80 !important;
+      font-weight: 700;
+    }
     #game-container {
       position: relative;
       border: 3px solid #334155;
@@ -94,6 +100,7 @@
     <div>Score: <span id="score">0</span></div>
     <div>High: <span id="highScore">0</span></div>
     <div>Streak: <span id="streak">0</span></div>
+    <div>Mult: <span id="multiplier">×1</span></div>
   </div>
   <div class="kick-info" id="kickInfo">Close range — 50 pts • 1 Defender</div>
 
@@ -110,7 +117,7 @@
 
   <div class="controls">
     Drag left/right to aim • Hold & release to set power<br>
-    Or use ← → / A D + Space • Score until you miss!
+    Top corners = Perfect Bonus! • Build your multiplier!
   </div>
 
   <script>
@@ -119,6 +126,7 @@
     const scoreEl = document.getElementById('score');
     const highScoreEl = document.getElementById('highScore');
     const streakEl = document.getElementById('streak');
+    const multiplierEl = document.getElementById('multiplier');
     const kickInfoEl = document.getElementById('kickInfo');
     const overlay = document.getElementById('overlay');
     const finalScoreEl = document.getElementById('finalScore');
@@ -127,25 +135,23 @@
     const resultTitleEl = document.getElementById('resultTitle');
     const restartBtn = document.getElementById('restartBtn');
 
-    // High score
     let highScore = parseInt(localStorage.getItem('cosmicFreeKickHigh') || '0');
     highScoreEl.textContent = highScore;
 
     // Game state
     let score = 0;
-    let streak = 0;          // consecutive goals
+    let streak = 0;
     let goals = 0;
     let gameOver = false;
-    let phase = 'aim';       // aim | power | flying | result
+    let phase = 'aim';
     let power = 0;
     let charging = false;
     let aimAngle = 0;
     let resultTimer = 0;
     let message = '';
     let messageTimer = 0;
+    let lastGoalPerfect = false;
 
-    // Progressive difficulty levels
-    // We cycle / scale these as streak increases
     const baseLevels = [
       { name: 'Close range',  points: 50,  ballY: 380, defenders: 1 },
       { name: 'Medium range', points: 80,  ballY: 420, defenders: 2 },
@@ -154,33 +160,34 @@
       { name: 'Extreme',      points: 200, ballY: 520, defenders: 3 }
     ];
 
-    // Ball
-    const ball = {
-      x: 190, y: 380, vx: 0, vy: 0, radius: 9, active: false
-    };
-
-    // Goalkeeper
-    const keeper = {
-      x: 190, y: 95, width: 36, height: 48,
-      diveDir: 0, diveProgress: 0, diving: false
-    };
-
-    // Goal
+    const ball = { x: 190, y: 380, vx: 0, vy: 0, radius: 9, active: false };
+    const keeper = { x: 190, y: 95, width: 36, height: 48, diveDir: 0, diveProgress: 0, diving: false };
     const goal = { x: 70, y: 40, width: 240, height: 70 };
-
-    // Defenders
     let defenders = [];
-
-    // Input
     let pointerDown = false;
     let lastX = 0;
 
+    function getMultiplier() {
+      if (streak >= 10) return 3;
+      if (streak >= 6) return 2.5;
+      if (streak >= 3) return 2;
+      if (streak >= 1) return 1.5;
+      return 1;
+    }
+
+    function updateMultiplierUI() {
+      const m = getMultiplier();
+      multiplierEl.textContent = '×' + m;
+      if (m >= 2.5) multiplierEl.style.color = '#f472b6';
+      else if (m >= 2) multiplierEl.style.color = '#4ade80';
+      else if (m >= 1.5) multiplierEl.style.color = '#fde68a';
+      else multiplierEl.style.color = '#94a3b8';
+    }
+
     function getCurrentLevel() {
-      // Progress through levels, then keep increasing difficulty
       const idx = Math.min(streak, baseLevels.length - 1);
       const level = { ...baseLevels[idx] };
 
-      // After max level, keep adding defenders and points
       if (streak >= baseLevels.length) {
         const extra = streak - baseLevels.length + 1;
         level.defenders = Math.min(5, 3 + Math.floor(extra / 2));
@@ -206,7 +213,7 @@
           width: 22,
           height: 38,
           phase: Math.random() * Math.PI * 2,
-          speed: 0.9 + Math.random() * 0.5 + (streak * 0.04) // faster as streak grows
+          speed: 0.9 + Math.random() * 0.5 + (streak * 0.04)
         });
       }
     }
@@ -227,8 +234,10 @@
       keeper.diveProgress = 0;
       keeper.diving = false;
       createDefenders(level.defenders);
+      lastGoalPerfect = false;
 
       streakEl.textContent = streak;
+      updateMultiplierUI();
       kickInfoEl.textContent = `${level.name} — ${level.points} pts • ${level.defenders} Defender${level.defenders > 1 ? 's' : ''}`;
       message = '';
     }
@@ -240,6 +249,7 @@
       gameOver = false;
       scoreEl.textContent = 0;
       streakEl.textContent = 0;
+      updateMultiplierUI();
       overlay.classList.remove('show');
       resetForKick();
     }
@@ -249,7 +259,7 @@
       finalScoreEl.textContent = score;
       finalHighEl.textContent = highScore;
       goalsTextEl.textContent = `You scored ${goals} goal${goals !== 1 ? 's' : ''} in a row!`;
-      resultTitleEl.textContent = goals >= 5 ? 'Amazing Run!' : goals >= 3 ? 'Great Session!' : 'Session Over';
+      resultTitleEl.textContent = goals >= 8 ? 'Legendary!' : goals >= 5 ? 'Amazing Run!' : goals >= 3 ? 'Great Session!' : 'Session Over';
       overlay.classList.add('show');
     }
 
@@ -264,16 +274,16 @@
       ball.vx = aimAngle * 6.5 * powerFactor;
       ball.vy = -baseSpeed * powerFactor;
 
-      // Keeper AI – gets slightly better with streak
+      // Keeper AI improves with streak
       const aimBias = aimAngle;
       let dive = 0;
-      const reactChance = 0.55 + Math.min(0.25, streak * 0.03);
+      const reactChance = 0.55 + Math.min(0.28, streak * 0.025);
       if (Math.abs(aimBias) < 0.22) {
         dive = Math.random() < reactChance ? (Math.random() < 0.5 ? -1 : 1) : 0;
       } else {
         dive = aimBias > 0 ? 1 : -1;
-        if (Math.random() < 0.25 - Math.min(0.1, streak * 0.01)) dive = -dive;
-        if (Math.random() < 0.15) dive = 0;
+        if (Math.random() < 0.25 - Math.min(0.12, streak * 0.01)) dive = -dive;
+        if (Math.random() < 0.14) dive = 0;
       }
       keeper.diveDir = dive;
       keeper.diving = true;
@@ -282,10 +292,9 @@
 
     function updateDefenders() {
       if (phase === 'flying' || phase === 'result') return;
-
       for (let d of defenders) {
         d.phase += 0.03 + (streak * 0.002);
-        const amplitude = 26 + Math.min(12, streak * 1.5);
+        const amplitude = 26 + Math.min(14, streak * 1.5);
         d.x = d.baseX + Math.sin(d.phase) * amplitude;
         d.x = Math.max(90, Math.min(290, d.x));
       }
@@ -323,7 +332,6 @@
           keeper.x = 190 + keeper.diveDir * (78 * keeper.diveProgress);
         }
 
-        // Hit defender?
         if (checkDefenderCollision()) {
           ball.active = false;
           phase = 'result';
@@ -333,10 +341,14 @@
           return;
         }
 
-        // Goal line checks
         if (ball.y < 85) {
           const inGoalX = ball.x > goal.x + 8 && ball.x < goal.x + goal.width - 8;
           const belowCrossbar = ball.y > goal.y + 5;
+
+          // Perfect zones: top left & top right corners
+          const isTopCorner = ball.y < goal.y + 28;
+          const isFarPost = (ball.x < goal.x + 45) || (ball.x > goal.x + goal.width - 45);
+          const isPerfect = isTopCorner && isFarPost;
 
           const dx = ball.x - keeper.x;
           const dy = ball.y - (keeper.y + 10);
@@ -352,21 +364,50 @@
             // GOAL!
             ball.active = false;
             phase = 'result';
+
             const level = getCurrentLevel();
-            const pts = level.points;
-            score += pts;
+            let pts = level.points;
+            let bonusText = '';
+
+            // Perfect placement bonus
+            if (isPerfect) {
+              pts = Math.round(pts * 1.8);
+              lastGoalPerfect = true;
+              bonusText = ' PERFECT!';
+            }
+
+            // Apply multiplier
+            const mult = getMultiplier();
+            const finalPts = Math.round(pts * mult);
+
+            score += finalPts;
             goals++;
             streak++;
             scoreEl.textContent = score;
             streakEl.textContent = streak;
+            updateMultiplierUI();
+
             if (score > highScore) {
               highScore = score;
               localStorage.setItem('cosmicFreeKickHigh', highScore);
               highScoreEl.textContent = highScore;
             }
-            message = `GOAL! +${pts}`;
-            messageTimer = 90;
-            resultTimer = 80;
+
+            if (lastGoalPerfect) {
+              message = `PERFECT! +${finalPts}`;
+            } else if (mult >= 2) {
+              message = `GOAL! ×${mult} +${finalPts}`;
+            } else {
+              message = `GOAL! +${finalPts}`;
+            }
+
+            // Milestone messages
+            if (streak === 5) message = `5 STREAK! +${finalPts}`;
+            if (streak === 10) message = `10 STREAK!! +${finalPts}`;
+            if (streak === 15) message = `UNSTOPPABLE! +${finalPts}`;
+
+            messageTimer = 100;
+            resultTimer = 85;
           } else if (ball.y < 30 || ball.x < 20 || ball.x > 360) {
             ball.active = false;
             phase = 'result';
@@ -386,9 +427,7 @@
       if (phase === 'result') {
         resultTimer--;
         if (resultTimer <= 0) {
-          // If it was a goal → continue (endless)
-          // If miss/save/block → game over
-          if (message.includes('GOAL')) {
+          if (message.includes('GOAL') || message.includes('PERFECT') || message.includes('STREAK') || message.includes('UNSTOPPABLE')) {
             resetForKick();
           } else {
             endGame();
@@ -437,6 +476,11 @@
       ctx.fillRect(goal.x - 4, goal.y, 6, goal.height + 8);
       ctx.fillRect(goal.x + goal.width - 2, goal.y, 6, goal.height + 8);
       ctx.fillRect(goal.x - 4, goal.y, goal.width + 8, 6);
+
+      // Highlight top corners lightly
+      ctx.fillStyle = 'rgba(125, 211, 252, 0.12)';
+      ctx.fillRect(goal.x + 6, goal.y + 6, 38, 24);
+      ctx.fillRect(goal.x + goal.width - 44, goal.y + 6, 38, 24);
 
       ctx.strokeStyle = 'rgba(255,255,255,0.25)';
       ctx.lineWidth = 1;
@@ -588,14 +632,22 @@
       if (messageTimer <= 0 || !message) return;
       ctx.save();
       ctx.globalAlpha = Math.min(1, messageTimer / 20);
-      ctx.font = 'bold 28px sans-serif';
+      ctx.font = 'bold 26px sans-serif';
       ctx.textAlign = 'center';
-      if (message.includes('GOAL')) ctx.fillStyle = '#4ade80';
-      else if (message.includes('BLOCKED')) ctx.fillStyle = '#f97316';
-      else ctx.fillStyle = '#f87171';
-      ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 8;
-      ctx.fillText(message, 190, 260);
+
+      if (message.includes('PERFECT') || message.includes('UNSTOPPABLE')) {
+        ctx.fillStyle = '#f472b6';
+      } else if (message.includes('GOAL') || message.includes('STREAK')) {
+        ctx.fillStyle = '#4ade80';
+      } else if (message.includes('BLOCKED')) {
+        ctx.fillStyle = '#f97316';
+      } else {
+        ctx.fillStyle = '#f87171';
+      }
+
+      ctx.shadowColor = 'rgba(0,0,0,0.7)';
+      ctx.shadowBlur = 10;
+      ctx.fillText(message, 190, 255);
       ctx.restore();
     }
 
@@ -615,13 +667,11 @@
       requestAnimationFrame(loop);
     }
 
-    // Input handlers
+    // Input
     function getPos(e) {
       const rect = canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      return {
-        x: (clientX - rect.left) * (canvas.width / rect.width)
-      };
+      return { x: (clientX - rect.left) * (canvas.width / rect.width) };
     }
 
     function onStart(e) {
@@ -685,7 +735,6 @@
 
     restartBtn.addEventListener('click', startGame);
 
-    // Start
     startGame();
     loop();
   </script>
