@@ -95,7 +95,7 @@
     <div>High: <span id="highScore">0</span></div>
     <div>Kick: <span id="kickNum">1</span>/3</div>
   </div>
-  <div class="kick-info" id="kickInfo">Close range — 50 pts</div>
+  <div class="kick-info" id="kickInfo">Close range — 50 pts • 1 Defender</div>
 
   <div id="game-container">
     <canvas id="canvas" width="380" height="560"></canvas>
@@ -144,11 +144,11 @@
     let message = '';
     let messageTimer = 0;
 
-    // Kick positions (y from bottom of pitch area)
+    // Kick data: distance + number of defenders
     const kicks = [
-      { name: 'Close range', points: 50,  ballY: 380, label: 'Close range — 50 pts' },
-      { name: 'Medium range', points: 100, ballY: 440, label: 'Medium range — 100 pts' },
-      { name: 'Long range', points: 150, ballY: 500, label: 'Long range — 150 pts' }
+      { name: 'Close range', points: 50,  ballY: 380, defenders: 1, label: 'Close range — 50 pts • 1 Defender' },
+      { name: 'Medium range', points: 100, ballY: 440, defenders: 2, label: 'Medium range — 100 pts • 2 Defenders' },
+      { name: 'Long range', points: 150, ballY: 500, defenders: 3, label: 'Long range — 150 pts • 3 Defenders' }
     ];
 
     // Ball
@@ -167,7 +167,7 @@
       y: 95,
       width: 36,
       height: 48,
-      diveDir: 0, // -1 left, 0 stay, 1 right
+      diveDir: 0,
       diveProgress: 0,
       diving: false
     };
@@ -180,10 +180,34 @@
       height: 70
     };
 
+    // Defenders (wall)
+    let defenders = [];
+
     // Input
     let pointerDown = false;
     let startX = 0;
     let lastX = 0;
+
+    function createDefenders(count) {
+      defenders = [];
+      const wallY = 195; // just outside the penalty area
+      const spacing = 38;
+      const totalWidth = (count - 1) * spacing;
+      const startX = 190 - totalWidth / 2;
+
+      for (let i = 0; i < count; i++) {
+        defenders.push({
+          x: startX + i * spacing,
+          y: wallY,
+          baseX: startX + i * spacing,
+          width: 22,
+          height: 38,
+          dir: (i % 2 === 0) ? 1 : -1,   // alternate starting direction
+          speed: 0.9 + Math.random() * 0.4,
+          phase: Math.random() * Math.PI * 2
+        });
+      }
+    }
 
     function resetForKick() {
       const k = kicks[currentKick];
@@ -200,6 +224,7 @@
       keeper.diveDir = 0;
       keeper.diveProgress = 0;
       keeper.diving = false;
+      createDefenders(k.defenders);
       kickNumEl.textContent = currentKick + 1;
       kickInfoEl.textContent = k.label;
       message = '';
@@ -231,23 +256,20 @@
       phase = 'flying';
       ball.active = true;
 
-      // Power 0-1 → velocity
       const powerFactor = 0.55 + power * 0.9;
       const baseSpeed = 11 + power * 7;
 
-      // Aim: angle affects horizontal velocity
       ball.vx = aimAngle * 6.5 * powerFactor;
       ball.vy = -baseSpeed * powerFactor;
 
-      // Keeper AI – reacts to aim + some randomness
+      // Keeper AI
       const aimBias = aimAngle;
       let dive = 0;
       if (Math.abs(aimBias) < 0.25) {
         dive = Math.random() < 0.55 ? (Math.random() < 0.5 ? -1 : 1) : 0;
       } else {
-        // Dive toward the shot most of the time
         dive = aimBias > 0 ? 1 : -1;
-        if (Math.random() < 0.28) dive = -dive; // sometimes wrong way
+        if (Math.random() < 0.28) dive = -dive;
         if (Math.random() < 0.18) dive = 0;
       }
       keeper.diveDir = dive;
@@ -255,16 +277,51 @@
       keeper.diveProgress = 0;
     }
 
+    function updateDefenders() {
+      // Only move while aiming / powering (before the shot)
+      if (phase === 'flying' || phase === 'result') return;
+
+      for (let d of defenders) {
+        d.phase += 0.035;
+        // Smooth left-right movement
+        const offset = Math.sin(d.phase) * 28;
+        d.x = d.baseX + offset;
+
+        // Keep them roughly in front of goal
+        d.x = Math.max(95, Math.min(285, d.x));
+      }
+    }
+
+    function checkDefenderCollision() {
+      if (!ball.active) return false;
+
+      for (let d of defenders) {
+        // Simple circle vs rectangle
+        const closestX = Math.max(d.x - d.width/2, Math.min(ball.x, d.x + d.width/2));
+        const closestY = Math.max(d.y - 5, Math.min(ball.y, d.y + d.height));
+        const dx = ball.x - closestX;
+        const dy = ball.y - closestY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        if (dist < ball.radius + 4) {
+          return true; // Hit a defender
+        }
+      }
+      return false;
+    }
+
     function update() {
       if (gameOver) return;
+
+      updateDefenders();
 
       if (phase === 'power' && charging) {
         power = Math.min(power + 0.018, 1);
       }
 
       if (phase === 'flying' && ball.active) {
-        // Simple physics
-        ball.vy += 0.28; // gravity
+        // Physics
+        ball.vy += 0.28;
         ball.vx *= 0.995;
         ball.x += ball.vx;
         ball.y += ball.vy;
@@ -276,8 +333,17 @@
           keeper.x = 190 + keeper.diveDir * diveDist;
         }
 
-        // Check goal / miss / save
-        // Goal line roughly at y = 70
+        // Hit a defender?
+        if (checkDefenderCollision()) {
+          ball.active = false;
+          phase = 'result';
+          message = 'BLOCKED!';
+          messageTimer = 90;
+          resultTimer = 100;
+          return;
+        }
+
+        // Goal / miss / save check
         if (ball.y < 85) {
           const inGoalX = ball.x > goal.x + 8 && ball.x < goal.x + goal.width - 8;
           const belowCrossbar = ball.y > goal.y + 5;
@@ -291,7 +357,6 @@
           const saved = dist < 32 && keeper.diveProgress > 0.25;
 
           if (saved) {
-            // Saved
             ball.active = false;
             phase = 'result';
             message = 'SAVED!';
@@ -314,7 +379,6 @@
             messageTimer = 90;
             resultTimer = 100;
           } else if (ball.y < 30 || ball.x < 20 || ball.x > 360) {
-            // Wide or over
             ball.active = false;
             phase = 'result';
             message = ball.y < 30 ? 'OVER THE BAR!' : 'WIDE!';
@@ -323,7 +387,7 @@
           }
         }
 
-        // Floor bounce (rare)
+        // Floor
         if (ball.y > 540) {
           ball.y = 540;
           ball.vy *= -0.4;
@@ -347,7 +411,6 @@
     }
 
     function drawPitch() {
-      // Grass
       const g = ctx.createLinearGradient(0, 0, 0, 560);
       g.addColorStop(0, '#166534');
       g.addColorStop(1, '#14532d');
@@ -360,17 +423,11 @@
         if (i % 2 === 0) ctx.fillRect(0, i * 48, 380, 48);
       }
 
-      // Pitch lines
+      // Lines
       ctx.strokeStyle = 'rgba(255,255,255,0.35)';
       ctx.lineWidth = 2;
-
-      // Outer
       ctx.strokeRect(25, 25, 330, 510);
-
-      // Penalty area
       ctx.strokeRect(80, 25, 220, 110);
-
-      // Goal area
       ctx.strokeRect(120, 25, 140, 50);
 
       // Penalty spot
@@ -379,12 +436,12 @@
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
       ctx.fill();
 
-      // Center circle (partial)
+      // Center circle
       ctx.beginPath();
       ctx.arc(190, 280, 55, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Halfway line
+      // Halfway
       ctx.beginPath();
       ctx.moveTo(25, 280);
       ctx.lineTo(355, 280);
@@ -392,13 +449,9 @@
     }
 
     function drawGoal() {
-      // Goal posts
       ctx.fillStyle = '#f1f5f9';
-      // Left post
       ctx.fillRect(goal.x - 4, goal.y, 6, goal.height + 8);
-      // Right post
       ctx.fillRect(goal.x + goal.width - 2, goal.y, 6, goal.height + 8);
-      // Crossbar
       ctx.fillRect(goal.x - 4, goal.y, goal.width + 8, 6);
 
       // Net
@@ -419,7 +472,6 @@
         ctx.stroke();
       }
 
-      // Dark inside goal
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
       ctx.fillRect(goal.x, goal.y + 6, goal.width, goal.height - 2);
     }
@@ -429,7 +481,7 @@
       const ky = keeper.y;
 
       // Body
-      ctx.fillStyle = '#e11d48'; // red kit
+      ctx.fillStyle = '#e11d48';
       ctx.beginPath();
       ctx.roundRect(kx - 14, ky + 8, 28, 32, 6);
       ctx.fill();
@@ -440,7 +492,7 @@
       ctx.arc(kx, ky + 4, 11, 0, Math.PI * 2);
       ctx.fill();
 
-      // Arms (stretched when diving)
+      // Arms
       ctx.strokeStyle = '#e11d48';
       ctx.lineWidth = 5;
       ctx.lineCap = 'round';
@@ -464,6 +516,37 @@
       ctx.fillRect(kx + 3, ky + 38, 9, 16);
     }
 
+    function drawDefenders() {
+      for (let d of defenders) {
+        // Body
+        ctx.fillStyle = '#1d4ed8'; // blue kit
+        ctx.beginPath();
+        ctx.roundRect(d.x - d.width/2, d.y, d.width, d.height - 10, 5);
+        ctx.fill();
+
+        // Head
+        ctx.fillStyle = '#fcd34d';
+        ctx.beginPath();
+        ctx.arc(d.x, d.y - 2, 9, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Arms slightly out
+        ctx.strokeStyle = '#1d4ed8';
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(d.x - 14, d.y + 12);
+        ctx.lineTo(d.x, d.y + 10);
+        ctx.lineTo(d.x + 14, d.y + 12);
+        ctx.stroke();
+
+        // Legs
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(d.x - 9, d.y + d.height - 12, 7, 12);
+        ctx.fillRect(d.x + 2, d.y + d.height - 12, 7, 12);
+      }
+    }
+
     function drawBall() {
       // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
@@ -481,7 +564,7 @@
       ctx.fillStyle = bg;
       ctx.fill();
 
-      // Simple pentagon pattern
+      // Pattern
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 1.2;
       ctx.beginPath();
@@ -493,7 +576,6 @@
       if (phase === 'flying' || phase === 'result') return;
 
       // Aim arrow
-      const arrowLen = 55;
       const ax = ball.x + aimAngle * 70;
       const ay = ball.y - 50;
 
@@ -514,7 +596,7 @@
       ctx.closePath();
       ctx.fill();
 
-      // Power bar (right side)
+      // Power bar
       const barX = 350;
       const barY = 200;
       const barH = 160;
@@ -532,7 +614,6 @@
       ctx.fillStyle = grad;
       ctx.fillRect(barX - 6, barY + barH - fillH, 12, fillH);
 
-      // Power label
       ctx.fillStyle = '#94a3b8';
       ctx.font = '11px sans-serif';
       ctx.textAlign = 'center';
@@ -545,7 +626,13 @@
       ctx.globalAlpha = Math.min(1, messageTimer / 20);
       ctx.font = 'bold 28px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = message.includes('GOAL') ? '#4ade80' : '#f87171';
+      if (message.includes('GOAL')) {
+        ctx.fillStyle = '#4ade80';
+      } else if (message.includes('BLOCKED')) {
+        ctx.fillStyle = '#f97316';
+      } else {
+        ctx.fillStyle = '#f87171';
+      }
       ctx.shadowColor = 'rgba(0,0,0,0.6)';
       ctx.shadowBlur = 8;
       ctx.fillText(message, 190, 260);
@@ -555,6 +642,7 @@
     function draw() {
       drawPitch();
       drawGoal();
+      drawDefenders();
       drawKeeper();
       drawBall();
       drawAimAndPower();
@@ -567,7 +655,7 @@
       requestAnimationFrame(loop);
     }
 
-    // Input handlers
+    // Input
     function getPos(e) {
       const rect = canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -612,24 +700,18 @@
       }
     }
 
-    // Touch
     canvas.addEventListener('touchstart', onStart, { passive: false });
     canvas.addEventListener('touchmove', onMove, { passive: false });
     canvas.addEventListener('touchend', onEnd, { passive: false });
     canvas.addEventListener('touchcancel', onEnd, { passive: false });
 
-    // Mouse
     canvas.addEventListener('mousedown', onStart);
     canvas.addEventListener('mousemove', onMove);
     canvas.addEventListener('mouseup', onEnd);
     canvas.addEventListener('mouseleave', onEnd);
 
-    // Keyboard
-    const keys = {};
     document.addEventListener('keydown', e => {
       if (gameOver) return;
-      keys[e.code] = true;
-
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') {
         aimAngle = Math.max(-1, aimAngle - 0.08);
       }
@@ -645,7 +727,6 @@
     });
 
     document.addEventListener('keyup', e => {
-      keys[e.code] = false;
       if ((e.code === 'Space' || e.code === 'ArrowUp') && phase === 'power' && charging) {
         e.preventDefault();
         charging = false;
