@@ -12,7 +12,8 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 # ──────────────────────────────────────────────
 TOKEN = "8843510657:AAGzWuoFgxxMcDsr-DKhHLqA1ZX8nZpa37Y"
 
-GAME_URL = "https://madmank79.github.io/Spacepinball/"
+# Updated to your new FreeKicks GitHub Pages URL
+GAME_URL = "https://madmank79.github.io/FreeKicks/"
 
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
