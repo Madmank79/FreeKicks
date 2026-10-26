@@ -7,30 +7,30 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      background: linear-gradient(180deg, #0a0f1a 0%, #1a2744 100%);
+      background: #0a0f1a;
       color: #e8f0ff;
       font-family: 'Segoe UI', system-ui, sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       min-height: 100vh;
       overflow: hidden;
       touch-action: none;
       user-select: none;
+      padding-top: 8px;
     }
     h1 {
-      font-size: 1.3rem;
-      margin-bottom: 4px;
+      font-size: 1.2rem;
+      margin-bottom: 2px;
       color: #7dd3fc;
       text-shadow: 0 0 12px rgba(125, 211, 252, 0.5);
-      letter-spacing: 1px;
     }
     #ui {
       display: flex;
-      gap: 12px;
-      margin-bottom: 4px;
-      font-size: 0.86rem;
+      gap: 10px;
+      margin-bottom: 2px;
+      font-size: 0.82rem;
       font-weight: 600;
       flex-wrap: wrap;
       justify-content: center;
@@ -60,71 +60,23 @@
       padding: 20px;
     }
     #overlay.show { display: flex; }
-    #overlay h2 { font-size: 1.6rem; color: #7dd3fc; margin-bottom: 10px; }
-    #overlay p { font-size: 1.15rem; margin: 4px 0; color: #e2e8f0; }
+    #overlay h2 { font-size: 1.5rem; color: #7dd3fc; margin-bottom: 10px; }
+    #overlay p { font-size: 1.1rem; margin: 4px 0; color: #e2e8f0; }
     .btn {
-      margin-top: 18px;
-      padding: 12px 36px;
-      font-size: 1.1rem;
+      margin-top: 16px;
+      padding: 12px 32px;
+      font-size: 1.05rem;
       background: linear-gradient(90deg, #0ea5e9, #38bdf8);
       border: none;
       border-radius: 30px;
       color: #0f172a;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
-    }
-    .controls {
-      margin-top: 6px;
-      text-align: center;
-      color: #94a3b8;
-      font-size: 0.8rem;
-      max-width: 360px;
-      line-height: 1.3;
     }
     .kick-info {
-      font-size: 0.84rem;
+      font-size: 0.8rem;
       color: #a5f3fc;
       margin-bottom: 3px;
-      min-height: 18px;
-    }
-    #shot-select {
-      display: flex;
-      gap: 8px;
-      margin-top: 8px;
-      justify-content: center;
-      width: 100%;
-      max-width: 380px;
-      padding: 0 8px;
-    }
-    .shot-btn {
-      flex: 1;
-      padding: 12px 6px;
-      font-size: 0.9rem;
-      font-weight: 700;
-      border: 2px solid #475569;
-      border-radius: 14px;
-      background: #1e293b;
-      color: #94a3b8;
-      cursor: pointer;
-      transition: all 0.15s;
-      text-align: center;
-      line-height: 1.3;
-    }
-    .shot-btn.active {
-      border-color: #38bdf8;
-      background: #0c4a6e;
-      color: #7dd3fc;
-      box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
-      transform: scale(1.03);
-    }
-    .shot-btn:active { transform: scale(0.97); }
-    .shot-btn small {
-      display: block;
-      font-size: 0.7rem;
-      font-weight: 500;
-      opacity: 0.8;
-      margin-top: 2px;
     }
   </style>
 </head>
@@ -139,7 +91,7 @@
   <div class="kick-info" id="kickInfo">Close range — 50 pts • 1 Defender</div>
 
   <div id="game-container">
-    <canvas id="canvas" width="380" height="560"></canvas>
+    <canvas id="canvas" width="380" height="580"></canvas>
     <div id="overlay">
       <h2 id="resultTitle">Game Over</h2>
       <p>Final Score: <span id="finalScore">0</span></p>
@@ -147,26 +99,6 @@
       <p id="goalsText" style="margin-top:8px;color:#86efac;"></p>
       <button class="btn" id="restartBtn">Play Again</button>
     </div>
-  </div>
-
-  <div id="shot-select">
-    <button class="shot-btn active" data-type="blast">
-      💥 Blast
-      <small>Power</small>
-    </button>
-    <button class="shot-btn" data-type="chip">
-      🎈 Chip
-      <small>Lob</small>
-    </button>
-    <button class="shot-btn" data-type="curve">
-      🌀 Curve
-      <small>Bend</small>
-    </button>
-  </div>
-
-  <div class="controls">
-    Tap Blast / Chip / Curve → Aim → Hold & release<br>
-    Top corners = Perfect Bonus!
   </div>
 
   <script>
@@ -183,7 +115,6 @@
     const goalsTextEl = document.getElementById('goalsText');
     const resultTitleEl = document.getElementById('resultTitle');
     const restartBtn = document.getElementById('restartBtn');
-    const shotBtns = document.querySelectorAll('.shot-btn');
 
     let highScore = parseInt(localStorage.getItem('cosmicFreeKickHigh') || '0');
     highScoreEl.textContent = highScore;
@@ -193,15 +124,21 @@
     let resultTimer = 0, message = '', messageTimer = 0;
     let shotType = 'blast';
 
-    const baseLevels = [
-      { name: 'Close range',  points: 50,  ballY: 380, defenders: 1 },
-      { name: 'Medium range', points: 80,  ballY: 420, defenders: 2 },
-      { name: 'Long range',   points: 120, ballY: 460, defenders: 2 },
-      { name: 'Far range',    points: 160, ballY: 500, defenders: 3 },
-      { name: 'Extreme',      points: 200, ballY: 520, defenders: 3 }
+    const shotButtons = [
+      { type: 'blast', label: '💥 BLAST', x: 30,  y: 535, w: 100, h: 36 },
+      { type: 'chip',  label: '🎈 CHIP',  x: 140, y: 535, w: 100, h: 36 },
+      { type: 'curve', label: '🌀 CURVE', x: 250, y: 535, w: 100, h: 36 }
     ];
 
-    const ball = { x: 190, y: 380, vx: 0, vy: 0, radius: 9, active: false, spin: 0 };
+    const baseLevels = [
+      { name: 'Close range',  points: 50,  ballY: 370, defenders: 1 },
+      { name: 'Medium range', points: 80,  ballY: 410, defenders: 2 },
+      { name: 'Long range',   points: 120, ballY: 450, defenders: 2 },
+      { name: 'Far range',    points: 160, ballY: 490, defenders: 3 },
+      { name: 'Extreme',      points: 200, ballY: 510, defenders: 3 }
+    ];
+
+    const ball = { x: 190, y: 370, vx: 0, vy: 0, radius: 9, active: false, spin: 0 };
     const keeper = { x: 190, y: 95, width: 36, height: 48, diveDir: 0, diveProgress: 0, diving: false };
     const goal = { x: 70, y: 40, width: 240, height: 70 };
     let defenders = [];
@@ -210,21 +147,7 @@
     function setShotType(type) {
       if (phase === 'flying' || phase === 'result' || gameOver) return;
       shotType = type;
-      shotBtns.forEach(b => b.classList.toggle('active', b.dataset.type === type));
     }
-
-    shotBtns.forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setShotType(btn.dataset.type);
-      });
-      btn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setShotType(btn.dataset.type);
-      }, { passive: false });
-    });
 
     function getMultiplier() {
       if (streak >= 10) return 3;
@@ -251,7 +174,7 @@
         level.defenders = Math.min(5, 3 + Math.floor(extra / 2));
         level.points = 200 + extra * 30;
         level.name = 'Extreme +' + extra;
-        level.ballY = 520;
+        level.ballY = 510;
       }
       return level;
     }
@@ -293,7 +216,7 @@
       scoreEl.textContent = 0; streakEl.textContent = 0;
       updateMultiplierUI();
       overlay.classList.remove('show');
-      setShotType('blast');
+      shotType = 'blast';
       resetForKick();
     }
 
@@ -368,6 +291,15 @@
       return false;
     }
 
+    function hitShotButton(x, y) {
+      for (let btn of shotButtons) {
+        if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
+          return btn.type;
+        }
+      }
+      return null;
+    }
+
     function update() {
       if (gameOver) return;
       updateDefenders();
@@ -437,7 +369,7 @@
             messageTimer = 90; resultTimer = 90;
           }
         }
-        if (ball.y > 540) { ball.y = 540; ball.vy *= -0.4; ball.vx *= 0.8; }
+        if (ball.y > 520) { ball.y = 520; ball.vy *= -0.4; ball.vx *= 0.8; }
       }
 
       if (phase === 'result') {
@@ -454,13 +386,13 @@
     }
 
     function drawPitch() {
-      const g = ctx.createLinearGradient(0, 0, 0, 560);
+      const g = ctx.createLinearGradient(0, 0, 0, 580);
       g.addColorStop(0, '#166534'); g.addColorStop(1, '#14532d');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, 380, 560);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, 380, 580);
       ctx.fillStyle = 'rgba(255,255,255,0.03)';
       for (let i = 0; i < 12; i++) if (i % 2 === 0) ctx.fillRect(0, i * 48, 380, 48);
       ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2;
-      ctx.strokeRect(25, 25, 330, 510);
+      ctx.strokeRect(25, 25, 330, 490);
       ctx.strokeRect(80, 25, 220, 110);
       ctx.strokeRect(120, 25, 140, 50);
       ctx.beginPath(); ctx.arc(190, 120, 3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
@@ -527,6 +459,26 @@
       ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius * 0.55, 0, Math.PI * 2); ctx.stroke();
     }
 
+    function drawShotButtons() {
+      if (phase === 'flying' || phase === 'result') return;
+
+      for (let btn of shotButtons) {
+        const isActive = shotType === btn.type;
+        ctx.fillStyle = isActive ? '#0c4a6e' : '#1e293b';
+        ctx.beginPath();
+        ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 10);
+        ctx.fill();
+        ctx.strokeStyle = isActive ? '#38bdf8' : '#475569';
+        ctx.lineWidth = isActive ? 2.5 : 1.5;
+        ctx.stroke();
+        ctx.fillStyle = isActive ? '#7dd3fc' : '#94a3b8';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(btn.label, btn.x + btn.w/2, btn.y + btn.h/2);
+      }
+    }
+
     function drawAimAndPower() {
       if (phase === 'flying' || phase === 'result') return;
       let arrowColor = '#38bdf8';
@@ -549,7 +501,7 @@
       ctx.fillStyle = arrowColor;
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - 7 - aimAngle * 4, ay + 12); ctx.lineTo(ax + 7 - aimAngle * 4, ay + 12); ctx.closePath(); ctx.fill();
 
-      const barX = 350, barY = 200, barH = 160;
+      const barX = 350, barY = 180, barH = 140;
       ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(barX - 8, barY, 16, barH);
       ctx.strokeStyle = '#64748b'; ctx.lineWidth = 2; ctx.strokeRect(barX - 8, barY, 16, barH);
       const fillH = power * barH;
@@ -557,11 +509,7 @@
       grad.addColorStop(0, '#22c55e'); grad.addColorStop(0.6, '#eab308'); grad.addColorStop(1, '#ef4444');
       ctx.fillStyle = grad; ctx.fillRect(barX - 6, barY + barH - fillH, 12, fillH);
       ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('PWR', barX, barY + barH + 16);
-
-      ctx.font = 'bold 13px sans-serif'; ctx.fillStyle = arrowColor;
-      const label = shotType === 'blast' ? 'BLAST' : shotType === 'chip' ? 'CHIP' : 'CURVE';
-      ctx.fillText(label, ball.x, ball.y + 28);
+      ctx.fillText('PWR', barX, barY + barH + 14);
     }
 
     function drawMessage() {
@@ -574,12 +522,19 @@
       else if (message.includes('BLOCKED')) ctx.fillStyle = '#f97316';
       else ctx.fillStyle = '#f87171';
       ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 10;
-      ctx.fillText(message, 190, 255);
+      ctx.fillText(message, 190, 250);
       ctx.restore();
     }
 
     function draw() {
-      drawPitch(); drawGoal(); drawDefenders(); drawKeeper(); drawBall(); drawAimAndPower(); drawMessage();
+      drawPitch();
+      drawGoal();
+      drawDefenders();
+      drawKeeper();
+      drawBall();
+      drawAimAndPower();
+      drawShotButtons();
+      drawMessage();
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
@@ -587,15 +542,31 @@
     function getPos(e) {
       const rect = canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      return { x: (clientX - rect.left) * (canvas.width / rect.width) };
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left) * (canvas.width / rect.width),
+        y: (clientY - rect.top) * (canvas.height / rect.height)
+      };
     }
 
     function onStart(e) {
       if (gameOver || phase === 'flying' || phase === 'result') return;
       e.preventDefault();
+      const p = getPos(e);
+
+      const hit = hitShotButton(p.x, p.y);
+      if (hit) {
+        setShotType(hit);
+        return;
+      }
+
       pointerDown = true;
-      lastX = getPos(e).x;
-      if (phase === 'aim') { phase = 'power'; charging = true; power = 0.15; }
+      lastX = p.x;
+      if (phase === 'aim') {
+        phase = 'power';
+        charging = true;
+        power = 0.15;
+      }
     }
 
     function onMove(e) {
@@ -610,7 +581,10 @@
       if (!pointerDown) return;
       e.preventDefault();
       pointerDown = false;
-      if (phase === 'power' && charging) { charging = false; shoot(); }
+      if (phase === 'power' && charging) {
+        charging = false;
+        shoot();
+      }
     }
 
     canvas.addEventListener('touchstart', onStart, { passive: false });
