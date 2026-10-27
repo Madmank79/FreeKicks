@@ -126,9 +126,9 @@
     let trail = [];
 
     const shotButtons = [
-      { type: 'blast', label: '💥 BLAST', x: 30,  y: 535, w: 100, h: 36 },
-      { type: 'chip',  label: '🎈 CHIP',  x: 140, y: 535, w: 100, h: 36 },
-      { type: 'curve', label: '🌀 CURVE', x: 250, y: 535, w: 100, h: 36 }
+      { type: 'blast', label: 'BLAST', x: 30,  y: 535, w: 100, h: 36 },
+      { type: 'chip',  label: 'CHIP',  x: 140, y: 535, w: 100, h: 36 },
+      { type: 'curve', label: 'CURVE', x: 250, y: 535, w: 100, h: 36 }
     ];
 
     const baseLevels = [
@@ -144,6 +144,19 @@
     const goal = { x: 70, y: 40, width: 240, height: 70 };
     let defenders = [];
     let pointerDown = false, lastX = 0;
+
+    // Compatible rounded rectangle (works on Telegram WebView)
+    function roundRect(x, y, w, h, r) {
+      if (w < 2 * r) r = w / 2;
+      if (h < 2 * r) r = h / 2;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
 
     function setShotType(type) {
       if (phase === 'flying' || phase === 'result' || gameOver) return;
@@ -169,7 +182,7 @@
 
     function getCurrentLevel() {
       const idx = Math.min(streak, baseLevels.length - 1);
-      const level = { ...baseLevels[idx] };
+      const level = Object.assign({}, baseLevels[idx]);
       if (streak >= baseLevels.length) {
         const extra = streak - baseLevels.length + 1;
         level.defenders = Math.min(5, 3 + Math.floor(extra / 2));
@@ -389,7 +402,7 @@
       if (phase === 'result') {
         resultTimer--;
         if (resultTimer <= 0) {
-          if (message.includes('GOAL') || message.includes('PERFECT') || message.includes('STREAK') || message.includes('UNSTOPPABLE')) {
+          if (message.indexOf('GOAL') !== -1 || message.indexOf('PERFECT') !== -1 || message.indexOf('STREAK') !== -1 || message.indexOf('UNSTOPPABLE') !== -1) {
             resetForKick();
           } else {
             endGame();
@@ -438,7 +451,7 @@
     function drawKeeper() {
       const kx = keeper.x, ky = keeper.y;
       ctx.fillStyle = '#e11d48';
-      ctx.beginPath(); ctx.roundRect(kx - 14, ky + 8, 28, 32, 6); ctx.fill();
+      roundRect(kx - 14, ky + 8, 28, 32, 6); ctx.fill();
       ctx.fillStyle = '#fcd34d';
       ctx.beginPath(); ctx.arc(kx, ky + 4, 11, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = '#e11d48'; ctx.lineWidth = 5; ctx.lineCap = 'round';
@@ -453,7 +466,7 @@
     function drawDefenders() {
       for (let d of defenders) {
         ctx.fillStyle = '#1d4ed8';
-        ctx.beginPath(); ctx.roundRect(d.x - d.width/2, d.y, d.width, d.height - 10, 5); ctx.fill();
+        roundRect(d.x - d.width/2, d.y, d.width, d.height - 10, 5); ctx.fill();
         ctx.fillStyle = '#fcd34d';
         ctx.beginPath(); ctx.arc(d.x, d.y - 2, 9, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 4; ctx.lineCap = 'round';
@@ -474,7 +487,7 @@
         if (t.life <= 0) continue;
         ctx.beginPath();
         ctx.arc(t.x, t.y, 3.5 * t.life, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${color}, ${t.life * 0.55})`;
+        ctx.fillStyle = 'rgba(' + color + ', ' + (t.life * 0.55) + ')';
         ctx.fill();
       }
     }
@@ -495,8 +508,7 @@
       for (let btn of shotButtons) {
         const isActive = shotType === btn.type;
         ctx.fillStyle = isActive ? '#0c4a6e' : '#1e293b';
-        ctx.beginPath();
-        ctx.roundRect(btn.x, btn.y, btn.w, btn.h, 10);
+        roundRect(btn.x, btn.y, btn.w, btn.h, 10);
         ctx.fill();
         ctx.strokeStyle = isActive ? '#38bdf8' : '#475569';
         ctx.lineWidth = isActive ? 2.5 : 1.5;
@@ -554,9 +566,9 @@
       ctx.save();
       ctx.globalAlpha = Math.min(1, messageTimer / 20);
       ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
-      if (message.includes('PERFECT') || message.includes('UNSTOPPABLE')) ctx.fillStyle = '#f472b6';
-      else if (message.includes('GOAL') || message.includes('STREAK')) ctx.fillStyle = '#4ade80';
-      else if (message.includes('BLOCKED')) ctx.fillStyle = '#f97316';
+      if (message.indexOf('PERFECT') !== -1 || message.indexOf('UNSTOPPABLE') !== -1) ctx.fillStyle = '#f472b6';
+      else if (message.indexOf('GOAL') !== -1 || message.indexOf('STREAK') !== -1) ctx.fillStyle = '#4ade80';
+      else if (message.indexOf('BLOCKED') !== -1) ctx.fillStyle = '#f97316';
       else ctx.fillStyle = '#f87171';
       ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 10;
       ctx.fillText(message, 190, 250);
@@ -610,4 +622,50 @@
       if (!pointerDown || phase === 'flying' || phase === 'result') return;
       e.preventDefault();
       const p = getPos(e);
-      aimAngle = Math.max(-1, Math.min(1, aimAngle + (p.x - lastX) * 0.
+      aimAngle = Math.max(-1, Math.min(1, aimAngle + (p.x - lastX) * 0.012));
+      lastX = p.x;
+    }
+
+    function onEnd(e) {
+      if (!pointerDown) return;
+      e.preventDefault();
+      pointerDown = false;
+      if (phase === 'power' && charging) {
+        charging = false;
+        shoot();
+      }
+    }
+
+    canvas.addEventListener('touchstart', onStart, { passive: false });
+    canvas.addEventListener('touchmove', onMove, { passive: false });
+    canvas.addEventListener('touchend', onEnd, { passive: false });
+    canvas.addEventListener('touchcancel', onEnd, { passive: false });
+    canvas.addEventListener('mousedown', onStart);
+    canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('mouseup', onEnd);
+    canvas.addEventListener('mouseleave', onEnd);
+
+    document.addEventListener('keydown', function(e) {
+      if (gameOver) return;
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') aimAngle = Math.max(-1, aimAngle - 0.08);
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') aimAngle = Math.min(1, aimAngle + 0.08);
+      if ((e.code === 'Space' || e.code === 'ArrowUp') && phase === 'aim') {
+        e.preventDefault(); phase = 'power'; charging = true; power = 0.15;
+      }
+      if (e.code === 'Digit1') setShotType('blast');
+      if (e.code === 'Digit2') setShotType('chip');
+      if (e.code === 'Digit3') setShotType('curve');
+    });
+
+    document.addEventListener('keyup', function(e) {
+      if ((e.code === 'Space' || e.code === 'ArrowUp') && phase === 'power' && charging) {
+        e.preventDefault(); charging = false; shoot();
+      }
+    });
+
+    restartBtn.addEventListener('click', startGame);
+    startGame();
+    loop();
+  </script>
+</body>
+</html>
