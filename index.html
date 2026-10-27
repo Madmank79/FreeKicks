@@ -7,9 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -119,14 +116,8 @@
       tg.expand();
     }
 
-    // --- Firebase Initialization (Demo Read/Write Project) ---
-    const firebaseConfig = {
-      databaseURL: "https://cosmic-free-kicks-default-rtdb.firebaseio.com/"
-    };
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    const db = firebase.database();
+    // --- Render Backend API URL ---
+    const RENDER_API_URL = 'https://the-orical.onrender.com/api/leaderboard';
 
     // --- DOM Elements ---
     const canvas = document.getElementById('canvas');
@@ -686,7 +677,7 @@
       }
     });
 
-    // --- Firebase Leaderboard Logic ---
+    // --- Render Backend Leaderboard API Logic ---
     function submitScoreToLeaderboard() {
       const pName = playerNameInput.value.trim() || 'Anonymous';
       localStorage.setItem('cosmicPlayerName', pName);
@@ -696,56 +687,64 @@
       submitScoreBtn.disabled = true;
       submitScoreBtn.textContent = 'Saving...';
 
-      const scoresRef = db.ref('leaderboard');
-      scoresRef.push({
-        name: pName,
-        score: score,
-        goals: goals,
-        timestamp: Date.now()
-      }, (error) => {
+      fetch(RENDER_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: pName,
+          score: score,
+          goals: goals
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
         submitScoreBtn.disabled = false;
         submitScoreBtn.textContent = 'Save';
-        if (!error) {
-          submitStatus.classList.remove('hidden');
-        }
+        submitStatus.classList.remove('hidden');
+      })
+      .catch(err => {
+        console.error('Error saving score:', err);
+        submitScoreBtn.disabled = false;
+        submitScoreBtn.textContent = 'Save';
       });
     }
 
     function loadLeaderboard() {
       leaderboardList.innerHTML = '<div class="text-xs text-slate-500 text-center py-6">Loading rankings...</div>';
-      
-      db.ref('leaderboard').orderByChild('score').limitToLast(10).once('value', (snapshot) => {
-        const scores = [];
-        snapshot.forEach((child) => {
-          scores.push(child.val());
+
+      fetch(RENDER_API_URL)
+        .then(res => res.json())
+        .then(scores => {
+          if (!scores || scores.length === 0) {
+            leaderboardList.innerHTML = '<div class="text-xs text-slate-500 text-center py-6">No scores yet. Be the first!</div>';
+            return;
+          }
+
+          leaderboardList.innerHTML = '';
+          scores.forEach((s, idx) => {
+            const item = document.createElement('div');
+            const badgeColor = idx === 0 ? 'bg-amber-400 text-slate-950' : 
+                               idx === 1 ? 'bg-slate-300 text-slate-950' : 
+                               idx === 2 ? 'bg-amber-700 text-slate-100' : 
+                               'bg-slate-800 text-slate-400';
+
+            item.className = 'w-full flex justify-between items-center bg-slate-900/90 border border-slate-800/80 px-3 py-1.5 rounded-lg text-xs';
+            item.innerHTML = `
+              <div class="flex items-center gap-2 overflow-hidden">
+                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${badgeColor}">${idx + 1}</span>
+                <span class="font-semibold text-slate-200 truncate max-w-[120px]">${s.name}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] text-slate-400 font-medium">${s.goals || 0}⚽</span>
+                <span class="font-extrabold text-amber-300">${s.score}</span>
+              </div>
+            `;
+            leaderboardList.appendChild(item);
+          });
+        })
+        .catch(err => {
+          leaderboardList.innerHTML = '<div class="text-xs text-red-400 text-center py-6">Failed to load scores.</div>';
         });
-        scores.reverse();
-
-        if (scores.length === 0) {
-          leaderboardList.innerHTML = '<div class="text-xs text-slate-500 text-center py-6">No scores yet. Be the first!</div>';
-          return;
-        }
-
-        leaderboardList.innerHTML = '';
-        scores.forEach((s, idx) => {
-          const item = document.createElement('div');
-          const isTop3 = idx < 3;
-          const badgeColor = idx === 0 ? 'bg-amber-400 text-slate-950' : idx === 1 ? 'bg-slate-300 text-slate-950' : idx === 2 ? 'bg-amber-700 text-slate-100' : 'bg-slate-800 text-slate-400';
-
-          item.className = 'w-full flex justify-between items-center bg-slate-900/90 border border-slate-800/80 px-3 py-1.5 rounded-lg text-xs';
-          item.innerHTML = `
-            <div class="flex items-center gap-2 overflow-hidden">
-              <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${badgeColor}">${idx + 1}</span>
-              <span class="font-semibold text-slate-200 truncate max-w-[120px]">${s.name}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <span class="text-[10px] text-slate-400 font-medium">${s.goals || 0}⚽</span>
-              <span class="font-extrabold text-amber-300">${s.score}</span>
-            </div>
-          `;
-          leaderboardList.appendChild(item);
-        });
-      });
     }
 
     submitScoreBtn.addEventListener('click', submitScoreToLeaderboard);
