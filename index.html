@@ -1,109 +1,148 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Cosmic Free Kicks</title>
+  <!-- Telegram Web App SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #0a0f1a;
-      color: #e8f0ff;
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      overflow: hidden;
+    * {
       touch-action: none;
       user-select: none;
-      padding-top: 6px;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
     }
-    h1 {
-      font-size: 1.15rem;
-      margin-bottom: 2px;
-      color: #7dd3fc;
-      text-shadow: 0 0 12px rgba(125, 211, 252, 0.5);
+    body {
+      background-color: #0b1120;
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
     }
-    #ui {
-      display: flex;
-      gap: 9px;
-      margin-bottom: 2px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-    #ui span { color: #fde68a; }
-    #multiplier { color: #4ade80 !important; font-weight: 700; }
-    #game-container {
+    #canvas-container {
       position: relative;
-      border: 3px solid #334155;
-      border-radius: 10px;
-      box-shadow: 0 0 30px rgba(56, 189, 248, 0.25);
-      background: #0f172a;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       overflow: hidden;
     }
-    canvas { display: block; border-radius: 7px; }
-    #overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(8, 15, 30, 0.92);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      border-radius: 7px;
-      z-index: 20;
-      text-align: center;
-      padding: 20px;
+    canvas {
+      display: block;
+      touch-action: none;
     }
-    #overlay.show { display: flex; }
-    #overlay h2 { font-size: 1.5rem; color: #7dd3fc; margin-bottom: 10px; }
-    #overlay p { font-size: 1.1rem; margin: 4px 0; color: #e2e8f0; }
-    .btn {
-      margin-top: 16px;
-      padding: 12px 32px;
-      font-size: 1.05rem;
-      background: linear-gradient(90deg, #0ea5e9, #38bdf8);
-      border: none;
-      border-radius: 30px;
-      color: #0f172a;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    .kick-info {
-      font-size: 0.78rem;
-      color: #a5f3fc;
-      margin-bottom: 3px;
+    .glow-title {
+      text-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
     }
   </style>
 </head>
-<body>
-  <h1>⚽ COSMIC FREE KICKS</h1>
-  <div id="ui">
-    <div>Score: <span id="score">0</span></div>
-    <div>High: <span id="highScore">0</span></div>
-    <div>Streak: <span id="streak">0</span></div>
-    <div>Mult: <span id="multiplier">×1</span></div>
-  </div>
-  <div class="kick-info" id="kickInfo">Close range — 50 pts • 1 Defender</div>
+<body class="flex flex-col h-screen w-screen overflow-hidden select-none bg-slate-950 text-slate-100">
 
-  <div id="game-container">
-    <canvas id="canvas" width="380" height="580"></canvas>
-    <div id="overlay">
-      <h2 id="resultTitle">Game Over</h2>
-      <p>Final Score: <span id="finalScore">0</span></p>
-      <p>High Score: <span id="finalHigh">0</span></p>
-      <p id="goalsText" style="margin-top:8px;color:#86efac;"></p>
-      <button class="btn" id="restartBtn">Play Again</button>
+  <!-- TOP HEADER UI -->
+  <header class="flex-none px-3 pt-2 pb-1 bg-slate-900/90 border-b border-slate-800 z-10">
+    <div class="flex items-center justify-between text-xs sm:text-sm font-semibold mb-1">
+      <h1 class="text-sky-400 font-extrabold text-sm sm:text-base glow-title flex items-center gap-1">
+        ⚽ COSMIC FREE KICKS
+      </h1>
+      <div class="flex items-center gap-2 sm:gap-3 text-slate-300">
+        <div>Score: <span id="score" class="text-amber-300 font-bold">0</span></div>
+        <div>High: <span id="highScore" class="text-amber-300 font-bold">0</span></div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between text-xs text-slate-300 border-t border-slate-800/60 pt-1">
+      <div class="flex items-center gap-2">
+        <span>Streak: <span id="streak" class="text-amber-300 font-bold">0</span></span>
+        <span id="multiplier" class="text-emerald-400 font-extrabold">×1</span>
+      </div>
+      <div id="kickInfo" class="text-cyan-300 font-medium truncate max-w-[180px] text-right">
+        Close range — 50 pts
+      </div>
+    </div>
+  </header>
+
+  <!-- GAME CANVAS CONTAINER -->
+  <div id="canvas-container" class="relative flex-1 w-full bg-slate-950">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- OVERLAY (Game Over / Start) -->
+    <div id="overlay" class="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 hidden">
+      <h2 id="resultTitle" class="text-2xl sm:text-3xl font-black text-sky-400 mb-2 glow-title">Game Over</h2>
+      <p class="text-slate-200 text-base mb-1">Final Score: <span id="finalScore" class="text-amber-300 font-bold">0</span></p>
+      <p class="text-slate-400 text-sm mb-3">High Score: <span id="finalHigh" class="text-amber-300 font-bold">0</span></p>
+      <p id="goalsText" class="text-emerald-400 font-medium text-sm mb-6"></p>
+
+      <div class="flex flex-col gap-3 w-full max-w-xs">
+        <button id="restartBtn" class="w-full py-3 px-6 bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg transition active:scale-95">
+          Play Again
+        </button>
+        <button id="shareBtn" class="w-full py-2.5 px-6 bg-slate-800 hover:bg-slate-700 text-sky-300 font-semibold rounded-xl border border-sky-500/30 transition active:scale-95 text-sm">
+          Share High Score 🚀
+        </button>
+      </div>
     </div>
   </div>
 
+  <!-- BOTTOM CONTROLS & SHOT TYPES -->
+  <footer class="flex-none p-2 bg-slate-900 border-t border-slate-800 z-10">
+    <div class="grid grid-cols-3 gap-2 max-w-md mx-auto">
+      <button id="btn-blast" class="shot-btn py-2 px-1 text-center rounded-lg bg-sky-900/60 border-2 border-sky-400 text-sky-200 font-bold text-xs sm:text-sm active:scale-95 transition">
+        🚀 BLAST
+      </button>
+      <button id="btn-chip" class="shot-btn py-2 px-1 text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs sm:text-sm active:scale-95 transition">
+        🎈 CHIP
+      </button>
+      <button id="btn-curve" class="shot-btn py-2 px-1 text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs sm:text-sm active:scale-95 transition">
+        🌀 CURVE
+      </button>
+    </div>
+  </footer>
+
   <script>
-    const canvas = document.getElementById('canvas');
+    // Safe Telegram WebApp Initialization
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      try {
+        tg.ready();
+        tg.expand();
+        if (tg.setHeaderColor) tg.setHeaderColor('#0f172a');
+        if (tg.setBackgroundColor) tg.setBackgroundColor('#0b1120');
+      } catch (e) {
+        console.warn('Telegram WebApp setup warning:', e);
+      }
+    }
+
+    // Safe LocalStorage Wrapper
+    function getStoredScore() {
+      try {
+        return parseInt(localStorage.getItem('cosmicFreeKickHigh') || '0');
+      } catch (e) {
+        return 0;
+      }
+    }
+
+    function setStoredScore(val) {
+      try {
+        localStorage.setItem('cosmicFreeKickHigh', val.toString());
+      } catch (e) {
+        console.warn('LocalStorage unavailable:', e);
+      }
+    }
+
+    // Canvas & Context Setup
+    const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvas-container');
+
+    // UI Elements
     const scoreEl = document.getElementById('score');
     const highScoreEl = document.getElementById('highScore');
     const streakEl = document.getElementById('streak');
@@ -115,38 +154,67 @@
     const goalsTextEl = document.getElementById('goalsText');
     const resultTitleEl = document.getElementById('resultTitle');
     const restartBtn = document.getElementById('restartBtn');
+    const shareBtn = document.getElementById('shareBtn');
 
-    let highScore = parseInt(localStorage.getItem('cosmicFreeKickHigh') || '0');
+    const shotBtns = {
+      blast: document.getElementById('btn-blast'),
+      chip: document.getElementById('btn-chip'),
+      curve: document.getElementById('btn-curve')
+    };
+
+    // Responsive Canvas Resolution Scaling
+    let width = 360;
+    let height = 500;
+    let scaleRatio = 1;
+
+    function resizeCanvas() {
+      const rect = container.getBoundingClientRect();
+      width = rect.width;
+      height = rect.height;
+
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = width + 'px';
+      canvas.style.height = height + 'px';
+
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+
+      // Scale base dimensions relative to 520px reference height
+      scaleRatio = height / 520;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Game State
+    let highScore = getStoredScore();
     highScoreEl.textContent = highScore;
 
     let score = 0, streak = 0, goals = 0, gameOver = false;
-    let phase = 'aim', power = 0, charging = false, aimAngle = 0;
+    let phase = 'aim'; // 'aim', 'power', 'flying', 'result'
+    let power = 0, charging = false, aimAngle = 0;
     let resultTimer = 0, message = '', messageTimer = 0;
     let shotType = 'blast';
     let trail = [];
 
-    const shotButtons = [
-      { type: 'blast', label: 'BLAST', x: 30,  y: 535, w: 100, h: 36 },
-      { type: 'chip',  label: 'CHIP',  x: 140, y: 535, w: 100, h: 36 },
-      { type: 'curve', label: 'CURVE', x: 250, y: 535, w: 100, h: 36 }
-    ];
-
     const baseLevels = [
-      { name: 'Close range',  points: 50,  ballY: 370, defenders: 1 },
-      { name: 'Medium range', points: 80,  ballY: 410, defenders: 2 },
-      { name: 'Long range',   points: 120, ballY: 450, defenders: 2 },
-      { name: 'Far range',    points: 160, ballY: 490, defenders: 3 },
-      { name: 'Extreme',      points: 200, ballY: 510, defenders: 3 }
+      { name: 'Close range', points: 50, ballYRatio: 0.72, defenders: 1 },
+      { name: 'Medium range', points: 80, ballYRatio: 0.78, defenders: 2 },
+      { name: 'Long range', points: 120, ballYRatio: 0.83, defenders: 2 },
+      { name: 'Far range', points: 160, ballYRatio: 0.88, defenders: 3 },
+      { name: 'Extreme', points: 200, ballYRatio: 0.90, defenders: 3 }
     ];
 
-    const ball = { x: 190, y: 370, vx: 0, vy: 0, radius: 9, active: false, spin: 0 };
-    const keeper = { x: 190, y: 95, width: 36, height: 48, diveDir: 0, diveProgress: 0, diving: false };
-    const goal = { x: 70, y: 40, width: 240, height: 70 };
+    const ball = { x: 0, y: 0, vx: 0, vy: 0, radius: 9, active: false, spin: 0 };
+    const keeper = { x: 0, y: 0, width: 36, height: 44, diveDir: 0, diveProgress: 0, diving: false };
+    const goal = { x: 0, y: 0, width: 220, height: 65 };
     let defenders = [];
-    let pointerDown = false, lastX = 0;
+    let pointerDown = false, lastX = 0, lastY = 0;
 
-    // Compatible rounded rectangle (works on Telegram WebView)
-    function roundRect(x, y, w, h, r) {
+    // Cross-Browser Compatible Rounded Rectangle
+    function drawRoundRect(x, y, w, h, r, fill, stroke) {
       if (w < 2 * r) r = w / 2;
       if (h < 2 * r) r = h / 2;
       ctx.beginPath();
@@ -156,11 +224,22 @@
       ctx.arcTo(x, y + h, x, y, r);
       ctx.arcTo(x, y, x + w, y, r);
       ctx.closePath();
+      if (fill) ctx.fill();
+      if (stroke) ctx.stroke();
     }
 
     function setShotType(type) {
       if (phase === 'flying' || phase === 'result' || gameOver) return;
       shotType = type;
+
+      Object.keys(shotBtns).forEach(k => {
+        const btn = shotBtns[k];
+        if (k === type) {
+          btn.className = "shot-btn py-2 px-1 text-center rounded-lg bg-sky-900/60 border-2 border-sky-400 text-sky-200 font-bold text-xs sm:text-sm active:scale-95 transition";
+        } else {
+          btn.className = "shot-btn py-2 px-1 text-center rounded-lg bg-slate-800 border border-slate-700 text-slate-400 font-bold text-xs sm:text-sm active:scale-95 transition";
+        }
+      });
     }
 
     function getMultiplier() {
@@ -188,24 +267,24 @@
         level.defenders = Math.min(5, 3 + Math.floor(extra / 2));
         level.points = 200 + extra * 30;
         level.name = 'Extreme +' + extra;
-        level.ballY = 510;
+        level.ballYRatio = 0.90;
       }
       return level;
     }
 
     function createDefenders(count) {
       defenders = [];
-      const wallY = 195;
-      const spacing = count > 3 ? 32 : 38;
+      const wallY = height * 0.36;
+      const spacing = count > 3 ? 28 : 34;
       const totalWidth = (count - 1) * spacing;
-      const startXPos = 190 - totalWidth / 2;
+      const startXPos = (width / 2) - totalWidth / 2;
       for (let i = 0; i < count; i++) {
         defenders.push({
           x: startXPos + i * spacing,
           y: wallY,
           baseX: startXPos + i * spacing,
-          width: 22,
-          height: 38,
+          width: 20,
+          height: 36,
           phase: Math.random() * Math.PI * 2
         });
       }
@@ -213,16 +292,25 @@
 
     function resetForKick() {
       const level = getCurrentLevel();
-      ball.x = 190;
-      ball.y = level.ballY;
+      goal.width = Math.min(240, width * 0.65);
+      goal.height = 60 * scaleRatio;
+      goal.x = (width - goal.width) / 2;
+      goal.y = 35 * scaleRatio;
+
+      ball.x = width / 2;
+      ball.y = height * level.ballYRatio;
       ball.vx = 0; ball.vy = 0; ball.active = false; ball.spin = 0;
       aimAngle = 0; power = 0; charging = false; phase = 'aim';
-      keeper.x = 190; keeper.diveDir = 0; keeper.diveProgress = 0; keeper.diving = false;
+
+      keeper.x = width / 2;
+      keeper.y = goal.y + goal.height - 18;
+      keeper.diveDir = 0; keeper.diveProgress = 0; keeper.diving = false;
+
       trail = [];
       createDefenders(level.defenders);
       streakEl.textContent = streak;
       updateMultiplierUI();
-      kickInfoEl.textContent = level.name + ' — ' + level.points + ' pts • ' + level.defenders + ' Defender' + (level.defenders > 1 ? 's' : '');
+      kickInfoEl.textContent = level.name + ' • ' + level.defenders + ' Def';
       message = '';
     }
 
@@ -230,8 +318,8 @@
       score = 0; streak = 0; goals = 0; gameOver = false;
       scoreEl.textContent = 0; streakEl.textContent = 0;
       updateMultiplierUI();
-      overlay.classList.remove('show');
-      shotType = 'blast';
+      overlay.classList.add('hidden');
+      setShotType('blast');
       resetForKick();
     }
 
@@ -241,7 +329,7 @@
       finalHighEl.textContent = highScore;
       goalsTextEl.textContent = 'You scored ' + goals + ' goal' + (goals !== 1 ? 's' : '') + ' in a row!';
       resultTitleEl.textContent = goals >= 8 ? 'Legendary!' : goals >= 5 ? 'Amazing Run!' : goals >= 3 ? 'Great Session!' : 'Session Over';
-      overlay.classList.add('show');
+      overlay.classList.remove('hidden');
     }
 
     function shoot() {
@@ -252,33 +340,33 @@
       const p = Math.max(0.2, power);
 
       if (shotType === 'blast') {
-        const speed = 14 + p * 9;
+        const speed = (13 + p * 8) * scaleRatio;
         ball.vx = aimAngle * 5.2 * (0.7 + p);
         ball.vy = -speed;
         ball.spin = 0;
       } else if (shotType === 'chip') {
-        const speed = 8.5 + p * 5;
-        ball.vx = aimAngle * 3.4 * (0.6 + p);
-        ball.vy = -speed * 1.55;
+        const speed = (8 + p * 4.5) * scaleRatio;
+        ball.vx = aimAngle * 3.2 * (0.6 + p);
+        ball.vy = -speed * 1.5;
         ball.spin = 0;
       } else {
-        const speed = 11 + p * 6.5;
-        ball.vx = aimAngle * 3.8 * (0.65 + p);
+        const speed = (10.5 + p * 6) * scaleRatio;
+        ball.vx = aimAngle * 3.6 * (0.65 + p);
         ball.vy = -speed;
-        ball.spin = aimAngle * 0.32 * (0.8 + p);
+        ball.spin = aimAngle * 0.3 * (0.8 + p);
       }
 
-      const aimBias = aimAngle;
+      // Keeper AI decision logic
       let dive = 0;
       const reactChance = 0.50 + Math.min(0.30, streak * 0.025);
       const difficultyMod = shotType === 'blast' ? -0.15 : (shotType === 'chip' ? 0.05 : 0);
 
-      if (Math.abs(aimBias) < 0.2) {
+      if (Math.abs(aimAngle) < 0.2) {
         dive = Math.random() < (reactChance + difficultyMod) ? (Math.random() < 0.5 ? -1 : 1) : 0;
       } else {
-        dive = aimBias > 0 ? 1 : -1;
-        if (Math.random() < 0.28 + difficultyMod) dive = -dive;
-        if (Math.random() < 0.16) dive = 0;
+        dive = aimAngle > 0 ? 1 : -1;
+        if (Math.random() < 0.25 + difficultyMod) dive = -dive;
+        if (Math.random() < 0.15) dive = 0;
       }
       keeper.diveDir = dive;
       keeper.diving = true;
@@ -289,16 +377,16 @@
       if (phase === 'flying' || phase === 'result') return;
       for (let d of defenders) {
         d.phase += 0.03 + (streak * 0.002);
-        const amplitude = 26 + Math.min(14, streak * 1.5);
+        const amplitude = 22 + Math.min(14, streak * 1.5);
         d.x = d.baseX + Math.sin(d.phase) * amplitude;
-        d.x = Math.max(90, Math.min(290, d.x));
+        d.x = Math.max(goal.x - 10, Math.min(goal.x + goal.width + 10, d.x));
       }
     }
 
     function checkDefenderCollision() {
       if (!ball.active) return false;
       for (let d of defenders) {
-        if (shotType === 'chip' && ball.y < d.y - 12) continue;
+        if (shotType === 'chip' && ball.y < d.y - 10) continue;
         const closestX = Math.max(d.x - d.width/2, Math.min(ball.x, d.x + d.width/2));
         const closestY = Math.max(d.y - 5, Math.min(ball.y, d.y + d.height));
         const dx = ball.x - closestX, dy = ball.y - closestY;
@@ -307,24 +395,15 @@
       return false;
     }
 
-    function hitShotButton(x, y) {
-      for (let btn of shotButtons) {
-        if (x >= btn.x && x <= btn.x + btn.w && y >= btn.y && y <= btn.y + btn.h) {
-          return btn.type;
-        }
-      }
-      return null;
-    }
-
     function update() {
       if (gameOver) return;
       updateDefenders();
-      if (phase === 'power' && charging) power = Math.min(power + 0.018, 1);
+      if (phase === 'power' && charging) power = Math.min(power + 0.02, 1);
 
       if (phase === 'flying' && ball.active) {
-        let grav = 0.29;
-        if (shotType === 'chip') grav = 0.195;
-        if (shotType === 'blast') grav = 0.33;
+        let grav = 0.28 * scaleRatio;
+        if (shotType === 'chip') grav = 0.19 * scaleRatio;
+        if (shotType === 'blast') grav = 0.32 * scaleRatio;
 
         ball.vy += grav;
 
@@ -338,40 +417,40 @@
         ball.y += ball.vy;
 
         trail.push({ x: ball.x, y: ball.y, life: 1 });
-        if (trail.length > 18) trail.shift();
-        for (let t of trail) t.life -= 0.055;
+        if (trail.length > 16) trail.shift();
+        for (let t of trail) t.life -= 0.06;
 
         if (keeper.diving) {
           keeper.diveProgress = Math.min(keeper.diveProgress + 0.045, 1);
-          keeper.x = 190 + keeper.diveDir * (78 * keeper.diveProgress);
+          keeper.x = (width / 2) + keeper.diveDir * ((goal.width * 0.38) * keeper.diveProgress);
         }
 
         if (checkDefenderCollision()) {
           ball.active = false; phase = 'result';
-          message = 'BLOCKED!'; messageTimer = 90; resultTimer = 90;
+          message = 'BLOCKED!'; messageTimer = 80; resultTimer = 80;
           return;
         }
 
-        if (ball.y < 85) {
-          const inGoalX = ball.x > goal.x + 8 && ball.x < goal.x + goal.width - 8;
-          const belowCrossbar = ball.y > goal.y + 5;
-          const isTopCorner = ball.y < goal.y + 28;
-          const isFarPost = (ball.x < goal.x + 48) || (ball.x > goal.x + goal.width - 48);
+        if (ball.y < goal.y + goal.height + 10) {
+          const inGoalX = ball.x > goal.x + 6 && ball.x < goal.x + goal.width - 6;
+          const belowCrossbar = ball.y > goal.y + 4;
+          const isTopCorner = ball.y < goal.y + (goal.height * 0.45);
+          const isFarPost = (ball.x < goal.x + 40) || (ball.x > goal.x + goal.width - 40);
           const isPerfect = isTopCorner && isFarPost;
-          const dx = ball.x - keeper.x, dy = ball.y - (keeper.y + 10);
-          const saved = Math.sqrt(dx*dx + dy*dy) < 32 && keeper.diveProgress > 0.25;
+
+          const dx = ball.x - keeper.x, dy = ball.y - (keeper.y + 5);
+          const saved = Math.sqrt(dx*dx + dy*dy) < 30 && keeper.diveProgress > 0.2;
 
           if (saved) {
             ball.active = false; phase = 'result';
-            message = 'SAVED!'; messageTimer = 90; resultTimer = 90;
-          } else if (inGoalX && belowCrossbar && ball.y < 95) {
+            message = 'SAVED!'; messageTimer = 80; resultTimer = 80;
+          } else if (inGoalX && belowCrossbar && ball.y < goal.y + goal.height) {
             ball.active = false; phase = 'result';
             const level = getCurrentLevel();
             let pts = level.points;
             if (isPerfect) pts = Math.round(pts * 1.8);
             if (shotType === 'chip' && isTopCorner) pts = Math.round(pts * 1.2);
             if (shotType === 'curve' && isFarPost) pts = Math.round(pts * 1.15);
-            if (shotType === 'blast' && !isPerfect) pts = Math.round(pts * 1.05);
 
             const mult = getMultiplier();
             const finalPts = Math.round(pts * mult);
@@ -380,29 +459,26 @@
             updateMultiplierUI();
             if (score > highScore) {
               highScore = score;
-              localStorage.setItem('cosmicFreeKickHigh', highScore);
+              setStoredScore(highScore);
               highScoreEl.textContent = highScore;
             }
             if (isPerfect) message = 'PERFECT! +' + finalPts;
             else if (mult >= 2) message = 'GOAL! ×' + mult + ' +' + finalPts;
             else message = 'GOAL! +' + finalPts;
-            if (streak === 5) message = '5 STREAK! +' + finalPts;
-            if (streak === 10) message = '10 STREAK!! +' + finalPts;
-            if (streak === 15) message = 'UNSTOPPABLE! +' + finalPts;
-            messageTimer = 100; resultTimer = 85;
-          } else if (ball.y < 30 || ball.x < 15 || ball.x > 365) {
+            messageTimer = 90; resultTimer = 80;
+          } else if (ball.y < goal.y || ball.x < goal.x - 15 || ball.x > goal.x + goal.width + 15) {
             ball.active = false; phase = 'result';
-            message = ball.y < 30 ? 'OVER THE BAR!' : 'WIDE!';
-            messageTimer = 90; resultTimer = 90;
+            message = ball.y < goal.y ? 'OVER THE BAR!' : 'WIDE!';
+            messageTimer = 80; resultTimer = 80;
           }
         }
-        if (ball.y > 520) { ball.y = 520; ball.vy *= -0.4; ball.vx *= 0.8; }
+        if (ball.y > height - 10) { ball.y = height - 10; ball.vy *= -0.3; }
       }
 
       if (phase === 'result') {
         resultTimer--;
         if (resultTimer <= 0) {
-          if (message.indexOf('GOAL') !== -1 || message.indexOf('PERFECT') !== -1 || message.indexOf('STREAK') !== -1 || message.indexOf('UNSTOPPABLE') !== -1) {
+          if (message.includes('GOAL') || message.includes('PERFECT')) {
             resetForKick();
           } else {
             endGame();
@@ -413,66 +489,75 @@
     }
 
     function drawPitch() {
-      const g = ctx.createLinearGradient(0, 0, 0, 580);
-      g.addColorStop(0, '#166534'); g.addColorStop(1, '#14532d');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, 380, 580);
+      const g = ctx.createLinearGradient(0, 0, 0, height);
+      g.addColorStop(0, '#15803d'); g.addColorStop(1, '#14532d');
+      ctx.fillStyle = g; ctx.fillRect(0, 0, width, height);
+
       ctx.fillStyle = 'rgba(255,255,255,0.03)';
-      for (let i = 0; i < 12; i++) if (i % 2 === 0) ctx.fillRect(0, i * 48, 380, 48);
+      const stripeH = height / 10;
+      for (let i = 0; i < 10; i += 2) {
+        ctx.fillRect(0, i * stripeH, width, stripeH);
+      }
+
       ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2;
-      ctx.strokeRect(25, 25, 330, 490);
-      ctx.strokeRect(80, 25, 220, 110);
-      ctx.strokeRect(120, 25, 140, 50);
-      ctx.beginPath(); ctx.arc(190, 120, 3, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.fill();
-      ctx.beginPath(); ctx.arc(190, 280, 55, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(25, 280); ctx.lineTo(355, 280); ctx.stroke();
+      ctx.strokeRect(15, 15, width - 30, height - 25);
+
+      const pWidth = goal.width + 60;
+      const pHeight = height * 0.28;
+      const pX = (width - pWidth) / 2;
+      ctx.strokeRect(pX, 15, pWidth, pHeight);
+
+      ctx.beginPath();
+      ctx.arc(width / 2, 15 + pHeight * 0.6, 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fill();
     }
 
     function drawGoal() {
-      ctx.fillStyle = '#f1f5f9';
-      ctx.fillRect(goal.x - 4, goal.y, 6, goal.height + 8);
-      ctx.fillRect(goal.x + goal.width - 2, goal.y, 6, goal.height + 8);
-      ctx.fillRect(goal.x - 4, goal.y, goal.width + 8, 6);
-      ctx.fillStyle = 'rgba(125, 211, 252, 0.13)';
-      ctx.fillRect(goal.x + 6, goal.y + 6, 38, 24);
-      ctx.fillRect(goal.x + goal.width - 44, goal.y + 6, 38, 24);
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
-      for (let i = 0; i <= 8; i++) {
-        const x = goal.x + (i / 8) * goal.width;
-        ctx.beginPath(); ctx.moveTo(x, goal.y + 6); ctx.lineTo(x - 8 + i*2, goal.y + goal.height); ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1;
+      const netRows = 6;
+      const netCols = 10;
+      for (let i = 0; i <= netCols; i++) {
+        const x = goal.x + (i / netCols) * goal.width;
+        ctx.beginPath(); ctx.moveTo(x, goal.y); ctx.lineTo(x, goal.y + goal.height); ctx.stroke();
       }
-      for (let j = 1; j < 5; j++) {
-        const y = goal.y + 6 + (j / 5) * goal.height;
+      for (let j = 0; j <= netRows; j++) {
+        const y = goal.y + (j / netRows) * goal.height;
         ctx.beginPath(); ctx.moveTo(goal.x, y); ctx.lineTo(goal.x + goal.width, y); ctx.stroke();
       }
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.fillRect(goal.x, goal.y + 6, goal.width, goal.height - 2);
+
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(goal.x - 4, goal.y, 6, goal.height);
+      ctx.fillRect(goal.x + goal.width - 2, goal.y, 6, goal.height);
+      ctx.fillRect(goal.x - 4, goal.y - 2, goal.width + 8, 6);
     }
 
     function drawKeeper() {
       const kx = keeper.x, ky = keeper.y;
-      ctx.fillStyle = '#e11d48';
-      roundRect(kx - 14, ky + 8, 28, 32, 6); ctx.fill();
-      ctx.fillStyle = '#fcd34d';
-      ctx.beginPath(); ctx.arc(kx, ky + 4, 11, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = '#e11d48'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-      const armSpread = 18 + keeper.diveProgress * 22;
-      ctx.beginPath(); ctx.moveTo(kx - armSpread, ky + 18); ctx.lineTo(kx, ky + 16); ctx.lineTo(kx + armSpread, ky + 18); ctx.stroke();
-      ctx.fillStyle = '#f8fafc';
-      ctx.beginPath(); ctx.arc(kx - armSpread, ky + 18, 6, 0, Math.PI * 2); ctx.arc(kx + armSpread, ky + 18, 6, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(kx - 12, ky + 38, 9, 16); ctx.fillRect(kx + 3, ky + 38, 9, 16);
+      ctx.fillStyle = '#ea580c';
+      drawRoundRect(kx - 13, ky - 10, 26, 28, 5, true, false);
+
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath(); ctx.arc(kx, ky - 16, 9, 0, Math.PI * 2); ctx.fill();
+
+      ctx.strokeStyle = '#ea580c'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      const armSpread = 16 + keeper.diveProgress * 18;
+      ctx.beginPath(); ctx.moveTo(kx - armSpread, ky - 2); ctx.lineTo(kx, ky - 4); ctx.lineTo(kx + armSpread, ky - 2); ctx.stroke();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(kx - armSpread, ky - 2, 5, 0, Math.PI * 2); ctx.arc(kx + armSpread, ky - 2, 5, 0, Math.PI * 2); ctx.fill();
     }
 
     function drawDefenders() {
       for (let d of defenders) {
-        ctx.fillStyle = '#1d4ed8';
-        roundRect(d.x - d.width/2, d.y, d.width, d.height - 10, 5); ctx.fill();
-        ctx.fillStyle = '#fcd34d';
-        ctx.beginPath(); ctx.arc(d.x, d.y - 2, 9, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#1d4ed8'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(d.x - 14, d.y + 12); ctx.lineTo(d.x, d.y + 10); ctx.lineTo(d.x + 14, d.y + 12); ctx.stroke();
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(d.x - 9, d.y + d.height - 12, 7, 12); ctx.fillRect(d.x + 2, d.y + d.height - 12, 7, 12);
+        ctx.fillStyle = '#2563eb';
+        drawRoundRect(d.x - d.width/2, d.y, d.width, d.height - 8, 4, true, false);
+
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath(); ctx.arc(d.x, d.y - 2, 8, 0, Math.PI * 2); ctx.fill();
+
+        ctx.fillStyle = '#0f172a';
+        ctx.fillRect(d.x - 8, d.y + d.height - 8, 6, 8);
+        ctx.fillRect(d.x + 2, d.y + d.height - 8, 6, 8);
       }
     }
 
@@ -486,8 +571,8 @@
         const t = trail[i];
         if (t.life <= 0) continue;
         ctx.beginPath();
-        ctx.arc(t.x, t.y, 3.5 * t.life, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(' + color + ', ' + (t.life * 0.55) + ')';
+        ctx.arc(t.x, t.y, 3 * t.life, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + color + ', ' + (t.life * 0.5) + ')';
         ctx.fill();
       }
     }
@@ -495,140 +580,114 @@
     function drawBall() {
       drawTrail();
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.beginPath(); ctx.ellipse(ball.x, ball.y + ball.radius + 2, ball.radius * 0.9, 4, 0, 0, Math.PI * 2); ctx.fill();
-      const bg = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 0, ball.x, ball.y, ball.radius);
-      bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.7, '#e2e8f0'); bg.addColorStop(1, '#94a3b8');
-      ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2); ctx.fillStyle = bg; ctx.fill();
-      ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius * 0.55, 0, Math.PI * 2); ctx.stroke();
-    }
+      ctx.beginPath(); ctx.ellipse(ball.x, ball.y + ball.radius + 1, ball.radius * 0.9, 3, 0, 0, Math.PI * 2); ctx.fill();
 
-    function drawShotButtons() {
-      if (phase === 'flying' || phase === 'result') return;
-      for (let btn of shotButtons) {
-        const isActive = shotType === btn.type;
-        ctx.fillStyle = isActive ? '#0c4a6e' : '#1e293b';
-        roundRect(btn.x, btn.y, btn.w, btn.h, 10);
-        ctx.fill();
-        ctx.strokeStyle = isActive ? '#38bdf8' : '#475569';
-        ctx.lineWidth = isActive ? 2.5 : 1.5;
-        ctx.stroke();
-        ctx.fillStyle = isActive ? '#7dd3fc' : '#94a3b8';
-        ctx.font = 'bold 13px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(btn.label, btn.x + btn.w/2, btn.y + btn.h/2);
-      }
+      const bg = ctx.createRadialGradient(ball.x - 2, ball.y - 2, 0, ball.x, ball.y, ball.radius);
+      bg.addColorStop(0, '#ffffff'); bg.addColorStop(0.7, '#e2e8f0'); bg.addColorStop(1, '#64748b');
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2); ctx.fillStyle = bg; ctx.fill();
+      ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.radius * 0.5, 0, Math.PI * 2); ctx.stroke();
     }
 
     function drawAimAndPower() {
       if (phase === 'flying' || phase === 'result') return;
+
       let arrowColor = '#38bdf8';
       if (shotType === 'chip') arrowColor = '#a78bfa';
       if (shotType === 'curve') arrowColor = '#34d399';
 
-      const ax = ball.x + aimAngle * 70;
-      const ay = ball.y - 50;
-      ctx.strokeStyle = arrowColor; ctx.lineWidth = 3; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(ball.x, ball.y - 12); ctx.lineTo(ax, ay); ctx.stroke();
+      const ax = ball.x + aimAngle * (width * 0.22);
+      const ay = ball.y - (60 * scaleRatio);
 
-      if (shotType === 'curve' && Math.abs(aimAngle) > 0.12) {
-        ctx.beginPath(); ctx.setLineDash([5, 4]);
+      ctx.strokeStyle = arrowColor; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(ball.x, ball.y - 10); ctx.lineTo(ax, ay); ctx.stroke();
+
+      if (shotType === 'curve' && Math.abs(aimAngle) > 0.1) {
+        ctx.beginPath(); ctx.setLineDash([4, 4]);
         const curveDir = aimAngle > 0 ? 1 : -1;
         ctx.moveTo(ax, ay);
-        ctx.quadraticCurveTo(ax + curveDir * 30, ay - 25, ax + curveDir * 50, ay - 8);
-        ctx.stroke(); ctx.setLineDash([]);
-      }
-
-      if (shotType === 'chip') {
-        ctx.beginPath(); ctx.setLineDash([4, 4]);
-        ctx.moveTo(ball.x, ball.y - 12);
-        ctx.quadraticCurveTo(ball.x + aimAngle * 40, ball.y - 110, ax, ay - 30);
+        ctx.quadraticCurveTo(ax + curveDir * 25, ay - 20, ax + curveDir * 40, ay - 5);
         ctx.stroke(); ctx.setLineDash([]);
       }
 
       ctx.fillStyle = arrowColor;
-      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - 7 - aimAngle * 4, ay + 12); ctx.lineTo(ax + 7 - aimAngle * 4, ay + 12); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - 6, ay + 10); ctx.lineTo(ax + 6, ay + 10); ctx.closePath(); ctx.fill();
 
-      const barX = 350, barY = 170, barH = 140;
-      ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(barX - 8, barY, 16, barH);
-      ctx.strokeStyle = '#64748b'; ctx.lineWidth = 2; ctx.strokeRect(barX - 8, barY, 16, barH);
+      // Vertical Power Bar
+      const barX = width - 20, barY = height * 0.35, barH = height * 0.3;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.6)'; ctx.fillRect(barX - 6, barY, 12, barH);
+      ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.strokeRect(barX - 6, barY, 12, barH);
+
       const fillH = power * barH;
       const grad = ctx.createLinearGradient(0, barY + barH, 0, barY);
       grad.addColorStop(0, '#22c55e'); grad.addColorStop(0.6, '#eab308'); grad.addColorStop(1, '#ef4444');
-      ctx.fillStyle = grad; ctx.fillRect(barX - 6, barY + barH - fillH, 12, fillH);
-      ctx.fillStyle = '#94a3b8'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
-      ctx.fillText('PWR', barX, barY + barH + 14);
+      ctx.fillStyle = grad; ctx.fillRect(barX - 5, barY + barH - fillH, 10, fillH);
     }
 
     function drawMessage() {
       if (messageTimer <= 0 || !message) return;
       ctx.save();
       ctx.globalAlpha = Math.min(1, messageTimer / 20);
-      ctx.font = 'bold 26px sans-serif'; ctx.textAlign = 'center';
-      if (message.indexOf('PERFECT') !== -1 || message.indexOf('UNSTOPPABLE') !== -1) ctx.fillStyle = '#f472b6';
-      else if (message.indexOf('GOAL') !== -1 || message.indexOf('STREAK') !== -1) ctx.fillStyle = '#4ade80';
-      else if (message.indexOf('BLOCKED') !== -1) ctx.fillStyle = '#f97316';
+      ctx.font = 'bold 22px system-ui, sans-serif'; ctx.textAlign = 'center';
+
+      if (message.includes('PERFECT')) ctx.fillStyle = '#f472b6';
+      else if (message.includes('GOAL')) ctx.fillStyle = '#4ade80';
+      else if (message.includes('BLOCKED')) ctx.fillStyle = '#f97316';
       else ctx.fillStyle = '#f87171';
-      ctx.shadowColor = 'rgba(0,0,0,0.7)'; ctx.shadowBlur = 10;
-      ctx.fillText(message, 190, 250);
+
+      ctx.shadowColor = 'rgba(0,0,0,0.8)'; ctx.shadowBlur = 8;
+      ctx.fillText(message, width / 2, height * 0.42);
       ctx.restore();
     }
 
     function draw() {
+      ctx.clearRect(0, 0, width, height);
       drawPitch();
       drawGoal();
       drawDefenders();
       drawKeeper();
       drawBall();
       drawAimAndPower();
-      drawShotButtons();
       drawMessage();
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
 
+    // Touch & Pointer Handling
     function getPos(e) {
       const rect = canvas.getBoundingClientRect();
       const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const clientY = e.touches ? e.touches[0].clientY : e.clientY;
       return {
-        x: (clientX - rect.left) * (canvas.width / rect.width),
-        y: (clientY - rect.top) * (canvas.height / rect.height)
+        x: clientX - rect.left,
+        y: clientY - rect.top
       };
     }
 
     function onStart(e) {
       if (gameOver || phase === 'flying' || phase === 'result') return;
-      e.preventDefault();
-      const p = getPos(e);
-
-      const hit = hitShotButton(p.x, p.y);
-      if (hit) {
-        setShotType(hit);
-        return;
-      }
-
       pointerDown = true;
+      const p = getPos(e);
       lastX = p.x;
+      lastY = p.y;
+
       if (phase === 'aim') {
         phase = 'power';
         charging = true;
-        power = 0.15;
+        power = 0.1;
       }
     }
 
     function onMove(e) {
       if (!pointerDown || phase === 'flying' || phase === 'result') return;
-      e.preventDefault();
       const p = getPos(e);
-      aimAngle = Math.max(-1, Math.min(1, aimAngle + (p.x - lastX) * 0.012));
+      const dx = p.x - lastX;
+      aimAngle = Math.max(-1, Math.min(1, aimAngle + (dx / (width * 0.4))));
       lastX = p.x;
     }
 
-    function onEnd(e) {
+    function onEnd() {
       if (!pointerDown) return;
-      e.preventDefault();
       pointerDown = false;
       if (phase === 'power' && charging) {
         charging = false;
@@ -636,36 +695,32 @@
       }
     }
 
-    canvas.addEventListener('touchstart', onStart, { passive: false });
-    canvas.addEventListener('touchmove', onMove, { passive: false });
-    canvas.addEventListener('touchend', onEnd, { passive: false });
-    canvas.addEventListener('touchcancel', onEnd, { passive: false });
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(e); }, { passive: false });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e); }, { passive: false });
+    canvas.addEventListener('touchend', (e) => { e.preventDefault(); onEnd(); }, { passive: false });
     canvas.addEventListener('mousedown', onStart);
     canvas.addEventListener('mousemove', onMove);
     canvas.addEventListener('mouseup', onEnd);
-    canvas.addEventListener('mouseleave', onEnd);
 
-    document.addEventListener('keydown', function(e) {
-      if (gameOver) return;
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') aimAngle = Math.max(-1, aimAngle - 0.08);
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') aimAngle = Math.min(1, aimAngle + 0.08);
-      if ((e.code === 'Space' || e.code === 'ArrowUp') && phase === 'aim') {
-        e.preventDefault(); phase = 'power'; charging = true; power = 0.15;
-      }
-      if (e.code === 'Digit1') setShotType('blast');
-      if (e.code === 'Digit2') setShotType('chip');
-      if (e.code === 'Digit3') setShotType('curve');
-    });
+    // Shot Selection Event Listeners
+    shotBtns.blast.addEventListener('click', () => setShotType('blast'));
+    shotBtns.chip.addEventListener('click', () => setShotType('chip'));
+    shotBtns.curve.addEventListener('click', () => setShotType('curve'));
 
-    document.addEventListener('keyup', function(e) {
-      if ((e.code === 'Space' || e.code === 'ArrowUp') && phase === 'power' && charging) {
-        e.preventDefault(); charging = false; shoot();
-      }
-    });
-
+    // Restart & Share Action
     restartBtn.addEventListener('click', startGame);
+    shareBtn.addEventListener('click', () => {
+      if (tg && tg.sendData) {
+        tg.sendData(JSON.stringify({ score: highScore, type: 'free_kick_high_score' }));
+      } else {
+        navigator.clipboard?.writeText('My Cosmic Free Kicks High Score: ' + highScore);
+      }
+    });
+
+    // Start Game
     startGame();
     loop();
   </script>
 </body>
 </html>
+```
