@@ -18,19 +18,19 @@
       overflow: hidden;
       touch-action: none;
       user-select: none;
-      padding-top: 8px;
+      padding-top: 6px;
     }
     h1 {
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       margin-bottom: 2px;
       color: #7dd3fc;
       text-shadow: 0 0 12px rgba(125, 211, 252, 0.5);
     }
     #ui {
       display: flex;
-      gap: 10px;
+      gap: 9px;
       margin-bottom: 2px;
-      font-size: 0.82rem;
+      font-size: 0.8rem;
       font-weight: 600;
       flex-wrap: wrap;
       justify-content: center;
@@ -74,7 +74,7 @@
       cursor: pointer;
     }
     .kick-info {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: #a5f3fc;
       margin-bottom: 3px;
     }
@@ -123,6 +123,7 @@
     let phase = 'aim', power = 0, charging = false, aimAngle = 0;
     let resultTimer = 0, message = '', messageTimer = 0;
     let shotType = 'blast';
+    let trail = [];
 
     const shotButtons = [
       { type: 'blast', label: '💥 BLAST', x: 30,  y: 535, w: 100, h: 36 },
@@ -204,6 +205,7 @@
       ball.vx = 0; ball.vy = 0; ball.active = false; ball.spin = 0;
       aimAngle = 0; power = 0; charging = false; phase = 'aim';
       keeper.x = 190; keeper.diveDir = 0; keeper.diveProgress = 0; keeper.diving = false;
+      trail = [];
       createDefenders(level.defenders);
       streakEl.textContent = streak;
       updateMultiplierUI();
@@ -233,36 +235,37 @@
       if (phase !== 'power' && phase !== 'aim') return;
       phase = 'flying';
       ball.active = true;
-      const powerFactor = 0.5 + power * 0.95;
+      trail = [];
+      const p = Math.max(0.2, power);
 
       if (shotType === 'blast') {
-        const baseSpeed = 13.5 + power * 8;
-        ball.vx = aimAngle * 5.8 * powerFactor;
-        ball.vy = -baseSpeed * powerFactor;
+        const speed = 14 + p * 9;
+        ball.vx = aimAngle * 5.2 * (0.7 + p);
+        ball.vy = -speed;
         ball.spin = 0;
       } else if (shotType === 'chip') {
-        const baseSpeed = 9.5 + power * 5.5;
-        ball.vx = aimAngle * 4.2 * powerFactor;
-        ball.vy = -baseSpeed * powerFactor * 1.25;
+        const speed = 8.5 + p * 5;
+        ball.vx = aimAngle * 3.4 * (0.6 + p);
+        ball.vy = -speed * 1.55;
         ball.spin = 0;
       } else {
-        const baseSpeed = 11.5 + power * 6.5;
-        ball.vx = aimAngle * 4.5 * powerFactor;
-        ball.vy = -baseSpeed * powerFactor;
-        ball.spin = aimAngle * 0.18 * (0.7 + power);
+        const speed = 11 + p * 6.5;
+        ball.vx = aimAngle * 3.8 * (0.65 + p);
+        ball.vy = -speed;
+        ball.spin = aimAngle * 0.32 * (0.8 + p);
       }
 
       const aimBias = aimAngle;
       let dive = 0;
-      const reactChance = 0.52 + Math.min(0.28, streak * 0.025);
-      const blastPenalty = shotType === 'blast' ? 0.12 : 0;
+      const reactChance = 0.50 + Math.min(0.30, streak * 0.025);
+      const difficultyMod = shotType === 'blast' ? -0.15 : (shotType === 'chip' ? 0.05 : 0);
 
-      if (Math.abs(aimBias) < 0.22) {
-        dive = Math.random() < (reactChance - blastPenalty) ? (Math.random() < 0.5 ? -1 : 1) : 0;
+      if (Math.abs(aimBias) < 0.2) {
+        dive = Math.random() < (reactChance + difficultyMod) ? (Math.random() < 0.5 ? -1 : 1) : 0;
       } else {
         dive = aimBias > 0 ? 1 : -1;
-        if (Math.random() < 0.26 - Math.min(0.12, streak * 0.01)) dive = -dive;
-        if (Math.random() < 0.15 + blastPenalty) dive = 0;
+        if (Math.random() < 0.28 + difficultyMod) dive = -dive;
+        if (Math.random() < 0.16) dive = 0;
       }
       keeper.diveDir = dive;
       keeper.diving = true;
@@ -282,7 +285,7 @@
     function checkDefenderCollision() {
       if (!ball.active) return false;
       for (let d of defenders) {
-        if (shotType === 'chip' && ball.y < d.y - 8) continue;
+        if (shotType === 'chip' && ball.y < d.y - 12) continue;
         const closestX = Math.max(d.x - d.width/2, Math.min(ball.x, d.x + d.width/2));
         const closestY = Math.max(d.y - 5, Math.min(ball.y, d.y + d.height));
         const dx = ball.x - closestX, dy = ball.y - closestY;
@@ -306,15 +309,24 @@
       if (phase === 'power' && charging) power = Math.min(power + 0.018, 1);
 
       if (phase === 'flying' && ball.active) {
-        const grav = shotType === 'chip' ? 0.22 : 0.28;
+        let grav = 0.29;
+        if (shotType === 'chip') grav = 0.195;
+        if (shotType === 'blast') grav = 0.33;
+
         ball.vy += grav;
-        if (shotType === 'curve' && ball.spin !== 0) {
+
+        if (shotType === 'curve' && Math.abs(ball.spin) > 0.001) {
           ball.vx += ball.spin;
-          ball.spin *= 0.985;
+          ball.spin *= 0.978;
         }
-        ball.vx *= 0.996;
+
+        ball.vx *= 0.997;
         ball.x += ball.vx;
         ball.y += ball.vy;
+
+        trail.push({ x: ball.x, y: ball.y, life: 1 });
+        if (trail.length > 18) trail.shift();
+        for (let t of trail) t.life -= 0.055;
 
         if (keeper.diving) {
           keeper.diveProgress = Math.min(keeper.diveProgress + 0.045, 1);
@@ -331,7 +343,7 @@
           const inGoalX = ball.x > goal.x + 8 && ball.x < goal.x + goal.width - 8;
           const belowCrossbar = ball.y > goal.y + 5;
           const isTopCorner = ball.y < goal.y + 28;
-          const isFarPost = (ball.x < goal.x + 45) || (ball.x > goal.x + goal.width - 45);
+          const isFarPost = (ball.x < goal.x + 48) || (ball.x > goal.x + goal.width - 48);
           const isPerfect = isTopCorner && isFarPost;
           const dx = ball.x - keeper.x, dy = ball.y - (keeper.y + 10);
           const saved = Math.sqrt(dx*dx + dy*dy) < 32 && keeper.diveProgress > 0.25;
@@ -344,8 +356,10 @@
             const level = getCurrentLevel();
             let pts = level.points;
             if (isPerfect) pts = Math.round(pts * 1.8);
-            if (shotType === 'chip' && isTopCorner) pts = Math.round(pts * 1.15);
-            if (shotType === 'curve' && isFarPost) pts = Math.round(pts * 1.1);
+            if (shotType === 'chip' && isTopCorner) pts = Math.round(pts * 1.2);
+            if (shotType === 'curve' && isFarPost) pts = Math.round(pts * 1.15);
+            if (shotType === 'blast' && !isPerfect) pts = Math.round(pts * 1.05);
+
             const mult = getMultiplier();
             const finalPts = Math.round(pts * mult);
             score += finalPts; goals++; streak++;
@@ -363,7 +377,7 @@
             if (streak === 10) message = '10 STREAK!! +' + finalPts;
             if (streak === 15) message = 'UNSTOPPABLE! +' + finalPts;
             messageTimer = 100; resultTimer = 85;
-          } else if (ball.y < 30 || ball.x < 20 || ball.x > 360) {
+          } else if (ball.y < 30 || ball.x < 15 || ball.x > 365) {
             ball.active = false; phase = 'result';
             message = ball.y < 30 ? 'OVER THE BAR!' : 'WIDE!';
             messageTimer = 90; resultTimer = 90;
@@ -449,7 +463,24 @@
       }
     }
 
+    function drawTrail() {
+      if (trail.length < 2) return;
+      let color = '56, 189, 248';
+      if (shotType === 'chip') color = '167, 139, 250';
+      if (shotType === 'curve') color = '52, 211, 153';
+
+      for (let i = 0; i < trail.length; i++) {
+        const t = trail[i];
+        if (t.life <= 0) continue;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, 3.5 * t.life, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${color}, ${t.life * 0.55})`;
+        ctx.fill();
+      }
+    }
+
     function drawBall() {
+      drawTrail();
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
       ctx.beginPath(); ctx.ellipse(ball.x, ball.y + ball.radius + 2, ball.radius * 0.9, 4, 0, 0, Math.PI * 2); ctx.fill();
       const bg = ctx.createRadialGradient(ball.x - 3, ball.y - 3, 0, ball.x, ball.y, ball.radius);
@@ -461,7 +492,6 @@
 
     function drawShotButtons() {
       if (phase === 'flying' || phase === 'result') return;
-
       for (let btn of shotButtons) {
         const isActive = shotType === btn.type;
         ctx.fillStyle = isActive ? '#0c4a6e' : '#1e293b';
@@ -490,18 +520,25 @@
       ctx.strokeStyle = arrowColor; ctx.lineWidth = 3; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(ball.x, ball.y - 12); ctx.lineTo(ax, ay); ctx.stroke();
 
-      if (shotType === 'curve' && Math.abs(aimAngle) > 0.15) {
-        ctx.beginPath(); ctx.setLineDash([4, 4]);
+      if (shotType === 'curve' && Math.abs(aimAngle) > 0.12) {
+        ctx.beginPath(); ctx.setLineDash([5, 4]);
         const curveDir = aimAngle > 0 ? 1 : -1;
         ctx.moveTo(ax, ay);
-        ctx.quadraticCurveTo(ax + curveDir * 25, ay - 20, ax + curveDir * 40, ay - 5);
+        ctx.quadraticCurveTo(ax + curveDir * 30, ay - 25, ax + curveDir * 50, ay - 8);
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+
+      if (shotType === 'chip') {
+        ctx.beginPath(); ctx.setLineDash([4, 4]);
+        ctx.moveTo(ball.x, ball.y - 12);
+        ctx.quadraticCurveTo(ball.x + aimAngle * 40, ball.y - 110, ax, ay - 30);
         ctx.stroke(); ctx.setLineDash([]);
       }
 
       ctx.fillStyle = arrowColor;
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - 7 - aimAngle * 4, ay + 12); ctx.lineTo(ax + 7 - aimAngle * 4, ay + 12); ctx.closePath(); ctx.fill();
 
-      const barX = 350, barY = 180, barH = 140;
+      const barX = 350, barY = 170, barH = 140;
       ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.fillRect(barX - 8, barY, 16, barH);
       ctx.strokeStyle = '#64748b'; ctx.lineWidth = 2; ctx.strokeRect(barX - 8, barY, 16, barH);
       const fillH = power * barH;
@@ -573,50 +610,4 @@
       if (!pointerDown || phase === 'flying' || phase === 'result') return;
       e.preventDefault();
       const p = getPos(e);
-      aimAngle = Math.max(-1, Math.min(1, aimAngle + (p.x - lastX) * 0.012));
-      lastX = p.x;
-    }
-
-    function onEnd(e) {
-      if (!pointerDown) return;
-      e.preventDefault();
-      pointerDown = false;
-      if (phase === 'power' && charging) {
-        charging = false;
-        shoot();
-      }
-    }
-
-    canvas.addEventListener('touchstart', onStart, { passive: false });
-    canvas.addEventListener('touchmove', onMove, { passive: false });
-    canvas.addEventListener('touchend', onEnd, { passive: false });
-    canvas.addEventListener('touchcancel', onEnd, { passive: false });
-    canvas.addEventListener('mousedown', onStart);
-    canvas.addEventListener('mousemove', onMove);
-    canvas.addEventListener('mouseup', onEnd);
-    canvas.addEventListener('mouseleave', onEnd);
-
-    document.addEventListener('keydown', e => {
-      if (gameOver) return;
-      if (e.code === 'ArrowLeft' || e.code === 'KeyA') aimAngle = Math.max(-1, aimAngle - 0.08);
-      if (e.code === 'ArrowRight' || e.code === 'KeyD') aimAngle = Math.min(1, aimAngle + 0.08);
-      if ((e.code === 'Space' || e.code === 'ArrowUp') && phase === 'aim') {
-        e.preventDefault(); phase = 'power'; charging = true; power = 0.15;
-      }
-      if (e.code === 'Digit1') setShotType('blast');
-      if (e.code === 'Digit2') setShotType('chip');
-      if (e.code === 'Digit3') setShotType('curve');
-    });
-
-    document.addEventListener('keyup', e => {
-      if ((e.code === 'Space' || e.code === 'ArrowUp') && phase === 'power' && charging) {
-        e.preventDefault(); charging = false; shoot();
-      }
-    });
-
-    restartBtn.addEventListener('click', startGame);
-    startGame();
-    loop();
-  </script>
-</body>
-</html>
+      aimAngle = Math.max(-1, Math.min(1, aimAngle + (p.x - lastX) * 0.
