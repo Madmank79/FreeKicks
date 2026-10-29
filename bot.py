@@ -10,7 +10,9 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 # ──────────────────────────────────────────────
 # BOT TOKEN
 # ──────────────────────────────────────────────
-TOKEN = "8843510657:AAGzWuoFgxxMcDsr-DKhHLqA1ZX8nZpa37Y"
+import os
+TOKEN = os.environ.get("TELEGRAM_TOKEN")
+
 
 # Updated to your new FreeKicks GitHub Pages URL
 GAME_URL = "https://madmank79.github.io/FreeKicks/"
