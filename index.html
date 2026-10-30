@@ -117,7 +117,7 @@
     }
 
     // --- Render Backend API URL ---
-    const RENDER_API_URL = 'https://the-orical.onrender.com/api/leaderboard';
+    const RENDER_API_URL = 'https://freekicks-leaderboard.onrender.com/api/leaderboard';
 
     // --- DOM Elements ---
     const canvas = document.getElementById('canvas');
@@ -731,7 +731,7 @@
             item.className = 'w-full flex justify-between items-center bg-slate-900/90 border border-slate-800/80 px-3 py-1.5 rounded-lg text-xs';
             item.innerHTML = `
               <div class="flex items-center gap-2 overflow-hidden">
-                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${badgeColor}">${idx + 1}</span>
+                <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black \( {badgeColor}"> \){idx + 1}</span>
                 <span class="font-semibold text-slate-200 truncate max-w-[120px]">${s.name}</span>
               </div>
               <div class="flex items-center gap-2">
